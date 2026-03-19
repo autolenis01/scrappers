@@ -137,6 +137,14 @@
   </div>
 
 </div>
+
+<footer class="footer">
+  <div class="footer-brand">Auto<span>Scrape</span></div>
+  <ul class="footer-links">
+    <li><a href="index.html">Home</a></li><li><a href="results.html">Results</a></li><li><a href="docs.html">API</a></li>
+  </ul>
+  <div class="footer-copy">© 2026 AutoScrape · For research use only</div>
+</footer>
 </div>
 
 <button id="scrolltop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
@@ -171,7 +179,7 @@ function renderList(list){
     const adapters = (j.adapters || []).join(' + ') || '—';
     const found = (j.total_found || 0).toLocaleString();
     const newCount = (j.total_new || 0).toLocaleString();
-    return `<div class="job-row ${selectedJob===j.id?'selected':''}" onclick="selectJob('${j.id}')">
+    return `<div class="job-row ${String(selectedJob)===String(j.id)?'selected':''}" onclick="selectJob('${j.id}')">
       <span class="tag ${tag}" style="font-size:9px">${j.status || '—'}</span>
       <span class="job-row-id">${j.uuid || j.id || '—'}</span>
       <div>

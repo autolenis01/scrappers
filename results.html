@@ -283,8 +283,8 @@ function resetFilters(){
 function sortBy(key){
   if(sortKey===key){sortAsc=!sortAsc;}else{sortKey=key;sortAsc=true;}
   document.querySelectorAll('th').forEach(t=>t.classList.remove('sorted','asc'));
-  event.target.classList.add('sorted');
-  if(sortAsc)event.target.classList.add('asc');
+  const th=document.querySelector(`th[onclick*="'${key}'"]`);
+  if(th){th.classList.add('sorted');if(sortAsc)th.classList.add('asc');}
   document.getElementById('sort-display').textContent=key.replace('_',' ');
   sortData(); render();
 }

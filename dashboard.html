@@ -176,23 +176,23 @@
     <div class="kpi-grid">
       <div class="stat-card">
         <div class="stat-label">Total Listings</div>
-        <div class="stat-value" id="kpi-listings">12,847</div>
-        <div class="stat-delta up">↑ 98 today</div>
+        <div class="stat-value" id="kpi-listings">—</div>
+        <div class="stat-sub" id="kpi-listings-sub"></div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Dealers</div>
-        <div class="stat-value" id="kpi-dealers">1,203</div>
-        <div class="stat-delta up">↑ 4 new</div>
+        <div class="stat-value" id="kpi-dealers">—</div>
+        <div class="stat-sub" id="kpi-dealers-sub"></div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Jobs (30d)</div>
-        <div class="stat-value" id="kpi-jobs">318</div>
-        <div class="stat-sub" id="kpi-running">2 running now</div>
+        <div class="stat-value" id="kpi-jobs">—</div>
+        <div class="stat-sub" id="kpi-running">—</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Avg Price</div>
-        <div class="stat-value">$42,680</div>
-        <div class="stat-delta up">↑ $310 vs last week</div>
+        <div class="stat-value" id="kpi-avg-price">—</div>
+        <div class="stat-sub" id="kpi-avg-sub"></div>
       </div>
     </div>
 
@@ -404,6 +404,13 @@ async function loadMakesChart() {
   try {
     const data = await api.getListings({ limit: 500 });
     const listings = Array.isArray(data) ? data : data.items || data.results || [];
+    // Compute avg price
+    const prices = listings.map(l => l.price).filter(p => p && !isNaN(p));
+    if (prices.length) {
+      const avg = Math.round(prices.reduce((a, b) => a + b, 0) / prices.length);
+      document.getElementById('kpi-avg-price').textContent = fmtPrice(avg);
+      document.getElementById('kpi-avg-sub').textContent = prices.length.toLocaleString() + ' priced listings';
+    }
     if (!listings.length) {
       document.getElementById('makes-chart').innerHTML = '<div style="color:var(--muted);font-family:var(--font-mono);font-size:12px;padding:20px 0">No listing data</div>';
       return;
@@ -425,6 +432,7 @@ async function loadMakesChart() {
 
 // ── Load Health ──
 async function loadHealth() {
+  document.querySelector('.health-grid').innerHTML = '<div class="health-card" style="text-align:center;padding:40px"><span style="font-family:var(--font-mono);font-size:12px;color:var(--muted)">Loading adapter health…</span></div>';
   try {
     const adapters = await api.getHealth();
     const grid = document.querySelector('.health-grid');
@@ -447,6 +455,7 @@ async function loadHealth() {
     }
   } catch(e) {
     console.warn('Health API unavailable:', e.message);
+    document.querySelector('.health-grid').innerHTML = '<div class="health-card" style="text-align:center;padding:40px"><span style="font-family:var(--font-mono);font-size:12px;color:var(--muted)">Could not load adapter health</span></div>';
   }
 }
 

@@ -94,7 +94,7 @@
     <input class="inp" id="d-search" style="width:220px" placeholder="Search dealer name…" oninput="applyFilter()"/>
     <input class="inp" id="d-city"   style="width:130px" placeholder="City" oninput="applyFilter()"/>
     <input class="inp" id="d-zip"    style="width:90px"  placeholder="ZIP"  oninput="applyFilter()"/>
-    <select class="sel" id="d-state" style="width:80px" onchange="applyFilter()"><option value="">State</option><option value="TX">TX</option></select>
+    <select class="sel" id="d-state" style="width:80px" onchange="applyFilter()"><option value="">State</option></select>
     <select class="sel" id="d-sort" style="width:160px" onchange="applyFilter()">
       <option value="listings">Most Listings</option>
       <option value="name">Name A–Z</option>
@@ -161,6 +161,12 @@ async function loadDealers(){
     document.getElementById('s-avg').textContent = allDealers.length ? Math.round(listings.length / allDealers.length) : 0;
     document.getElementById('state-count').textContent = [...new Set(allDealers.map(d=>d.state).filter(Boolean))].length;
     document.getElementById('dealer-count').textContent = allDealers.length + ' dealers';
+
+    // populate state dropdown dynamically
+    const states = [...new Set(allDealers.map(d=>d.state).filter(Boolean))].sort();
+    const stateSel = document.getElementById('d-state');
+    stateSel.innerHTML = '<option value="">State</option>';
+    states.forEach(s => { const o = document.createElement('option'); o.value = s; o.textContent = s; stateSel.appendChild(o); });
 
     applyFilter();
   } catch(e) {
