@@ -118,11 +118,14 @@
 <button id="scrolltop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
 <script src="_data.js"></script>
 <script>
-// build enriched dealer list from mock listings
-function buildDealers(){
+let allDealers=[], filtered=[];
+
+// build enriched dealer list from API listings
+function buildDealers(listings){
   const map={};
-  MOCK.listings.forEach(l=>{
+  listings.forEach(l=>{
     const k=l.dealer_name;
+    if(!k) return;
     if(!map[k]){
       map[k]={
         name:l.dealer_name, phone:l.dealer_phone, addr:l.dealer_address,
@@ -134,7 +137,7 @@ function buildDealers(){
     }
     map[k].listings++;
     map[k].sources.add(l.source);
-    map[k].makes.add(l.make);
+    if(l.make) map[k].makes.add(l.make);
     if(l.price){map[k].avgPrice.push(l.price);map[k].minPrice=Math.min(map[k].minPrice,l.price);map[k].maxPrice=Math.max(map[k].maxPrice,l.price);}
   });
   return Object.values(map).map(d=>({
@@ -145,14 +148,31 @@ function buildDealers(){
   }));
 }
 
-let allDealers=buildDealers(), filtered=[...allDealers];
+async function loadDealers(){
+  try {
+    const data = await api.getListings({ limit: 1000 });
+    const listings = Array.isArray(data) ? data : data.items || data.results || [];
+    allDealers = buildDealers(listings);
+    filtered = [...allDealers];
 
-// summary
-document.getElementById('s-dealers').textContent=allDealers.length;
-document.getElementById('s-listings').textContent=MOCK.listings.length.toLocaleString();
-document.getElementById('s-avg').textContent=Math.round(MOCK.listings.length/allDealers.length);
-document.getElementById('state-count').textContent=[...new Set(allDealers.map(d=>d.state).filter(Boolean))].length;
-document.getElementById('dealer-count').textContent=allDealers.length+' dealers';
+    // summary
+    document.getElementById('s-dealers').textContent = allDealers.length;
+    document.getElementById('s-listings').textContent = listings.length.toLocaleString();
+    document.getElementById('s-avg').textContent = allDealers.length ? Math.round(listings.length / allDealers.length) : 0;
+    document.getElementById('state-count').textContent = [...new Set(allDealers.map(d=>d.state).filter(Boolean))].length;
+    document.getElementById('dealer-count').textContent = allDealers.length + ' dealers';
+
+    applyFilter();
+  } catch(e) {
+    console.warn('Dealers API unavailable:', e.message);
+    document.getElementById('s-dealers').textContent = '—';
+    document.getElementById('s-listings').textContent = '—';
+    document.getElementById('s-avg').textContent = '—';
+    document.getElementById('state-count').textContent = '—';
+    document.getElementById('dealer-count').textContent = 'API unavailable';
+    document.getElementById('dealer-grid').innerHTML = '<p style="text-align:center;color:var(--muted);padding:40px">Could not load dealer data. Make sure the API is running.</p>';
+  }
+}
 
 function applyFilter(){
   const q=document.getElementById('d-search').value.toLowerCase();
@@ -213,7 +233,7 @@ function doExport(){
   a.download='dealers.csv'; a.click();
 }
 
-applyFilter();
+loadDealers();
 window.addEventListener('scroll',()=>{document.getElementById('scrolltop').classList.toggle('visible',window.scrollY>300);});
 </script>
 </body>

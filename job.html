@@ -142,7 +142,20 @@
 <button id="scrolltop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
 <script src="_data.js"></script>
 <script>
-let jobs=[...MOCK.jobs], selectedJob=null;
+let jobs=[], selectedJob=null;
+
+// ── Load jobs from API ──
+async function loadJobs(){
+  try {
+    const data = await api.getJobs({ limit: 200 });
+    jobs = Array.isArray(data) ? data : data.items || data.results || [];
+    filterJobs();
+  } catch(e) {
+    console.warn('Jobs API unavailable:', e.message);
+    document.getElementById('job-total').textContent = '(API unavailable)';
+    document.getElementById('job-list').innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted);font-family:var(--font-mono);font-size:12px">Could not load jobs. Make sure the API is running.</div>';
+  }
+}
 
 function filterJobs(){
   const status=document.getElementById('status-filter').value;
@@ -154,48 +167,63 @@ function filterJobs(){
 function renderList(list){
   document.getElementById('job-list').innerHTML=list.map(j=>{
     const tag={done:'tag-green',running:'tag-blue',failed:'tag-red',partial:'tag-amber',pending:''}[j.status]||'';
+    const zips = (j.zip_codes || []).join(', ') || '—';
+    const adapters = (j.adapters || []).join(' + ') || '—';
+    const found = (j.total_found || 0).toLocaleString();
+    const newCount = (j.total_new || 0).toLocaleString();
     return `<div class="job-row ${selectedJob===j.id?'selected':''}" onclick="selectJob('${j.id}')">
-      <span class="tag ${tag}" style="font-size:9px">${j.status}</span>
-      <span class="job-row-id">${j.uuid}</span>
+      <span class="tag ${tag}" style="font-size:9px">${j.status || '—'}</span>
+      <span class="job-row-id">${j.uuid || j.id || '—'}</span>
       <div>
-        <div class="job-row-zips">${j.zip_codes.join(', ')}</div>
-        <div class="job-row-adapters">${j.adapters.join(' + ')}</div>
+        <div class="job-row-zips">${zips}</div>
+        <div class="job-row-adapters">${adapters}</div>
       </div>
-      <span class="job-row-found">${j.total_found.toLocaleString()}</span>
-      <span class="job-row-new">+${j.total_new.toLocaleString()}</span>
+      <span class="job-row-found">${found}</span>
+      <span class="job-row-new">+${newCount}</span>
       <span class="job-row-date">${fmtDate(j.created_at)}</span>
     </div>`;
   }).join('');
 }
 
-function selectJob(id){
+async function selectJob(id){
   selectedJob=id;
   filterJobs();
-  const job=jobs.find(j=>j.id===id);
-  if(!job)return;
+
+  let job;
+  try {
+    job = await api.getJob(id);
+  } catch(e) {
+    job = jobs.find(j => String(j.id) === String(id));
+  }
+  if(!job) return;
+
   document.getElementById('d-title').textContent='Job #'+job.id;
-  document.getElementById('d-id').textContent=job.uuid;
+  document.getElementById('d-id').textContent=job.uuid || job.id || '—';
 
   const dur=job.started_at&&job.finished_at?Math.round((new Date(job.finished_at)-new Date(job.started_at))/1000)+'s':'—';
-  const pct=job.status==='done'?100:job.status==='running'?Math.round(job.total_found/200*100):0;
   const tag={done:'tag-green',running:'tag-blue',failed:'tag-red',partial:'tag-amber',pending:''}[job.status]||'';
+  const zips = (job.zip_codes || []).join(', ') || '—';
+  const adapters = (job.adapters || []).join(', ') || '—';
+  const totalFound = job.total_found || 0;
+  const totalNew = job.total_new || 0;
+  const uuid = job.uuid || job.id || '—';
 
   document.getElementById('detail-body').innerHTML=`
     <div class="detail-section">
       <div class="detail-section-title">Overview</div>
-      <div class="detail-row"><span class="detail-key">Status</span><span class="tag ${tag}">${job.status}</span></div>
-      <div class="detail-row"><span class="detail-key">Listings found</span><span class="detail-val">${job.total_found.toLocaleString()}</span></div>
-      <div class="detail-row"><span class="detail-key">New listings</span><span class="detail-val" style="color:#4ade80">+${job.total_new.toLocaleString()}</span></div>
-      <div class="detail-row"><span class="detail-key">Duplicates</span><span class="detail-val">${(job.total_found-job.total_new).toLocaleString()}</span></div>
+      <div class="detail-row"><span class="detail-key">Status</span><span class="tag ${tag}">${job.status || '—'}</span></div>
+      <div class="detail-row"><span class="detail-key">Listings found</span><span class="detail-val">${totalFound.toLocaleString()}</span></div>
+      <div class="detail-row"><span class="detail-key">New listings</span><span class="detail-val" style="color:#4ade80">+${totalNew.toLocaleString()}</span></div>
+      <div class="detail-row"><span class="detail-key">Duplicates</span><span class="detail-val">${(totalFound-totalNew).toLocaleString()}</span></div>
       ${job.status==='running'?`<div class="running-bar"></div><div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-top:4px">Scraping in progress…</div>`:''}
     </div>
 
     <div class="detail-section">
       <div class="detail-section-title">Configuration</div>
-      <div class="detail-row"><span class="detail-key">ZIP codes</span><span class="detail-val">${job.zip_codes.join(', ')}</span></div>
-      <div class="detail-row"><span class="detail-key">Radius</span><span class="detail-val">${job.radius_miles} mi</span></div>
-      <div class="detail-row"><span class="detail-key">Adapters</span><span class="detail-val">${job.adapters.join(', ')}</span></div>
-      <div class="detail-row"><span class="detail-key">Celery task ID</span><span class="detail-val" style="font-size:10px;color:var(--muted)">${job.uuid}…</span></div>
+      <div class="detail-row"><span class="detail-key">ZIP codes</span><span class="detail-val">${zips}</span></div>
+      <div class="detail-row"><span class="detail-key">Radius</span><span class="detail-val">${job.radius_miles || '—'} mi</span></div>
+      <div class="detail-row"><span class="detail-key">Adapters</span><span class="detail-val">${adapters}</span></div>
+      <div class="detail-row"><span class="detail-key">Celery task ID</span><span class="detail-val" style="font-size:10px;color:var(--muted)">${uuid}</span></div>
     </div>
 
     <div class="detail-section">
@@ -212,28 +240,15 @@ function selectJob(id){
       <div style="font-family:var(--font-mono);font-size:11px;color:#f87171;background:var(--red-dim);border:1px solid rgba(192,57,43,0.3);padding:12px;line-height:1.7">${job.error_message}</div>
     </div>`:''}
 
-    <div class="detail-section">
-      <div class="detail-section-title">Log Excerpt</div>
-      <div class="mini-log">
-        <div class="ml-line"><span class="ml-t">00:00:00</span><span class="ml-inf">INFO</span><span class="ml-m">task.received job_id=${job.uuid.slice(0,8)}</span></div>
-        <div class="ml-line"><span class="ml-t">00:00:01</span><span class="ml-inf">INFO</span><span class="ml-m">cars_com.fetch zip=${job.zip_codes[0]} page=1</span></div>
-        <div class="ml-line"><span class="ml-t">00:00:04</span><span class="ml-ok">OK  </span><span class="ml-m">cars_com.page_done count=24 new=22</span></div>
-        <div class="ml-line"><span class="ml-t">00:00:07</span><span class="ml-inf">INFO</span><span class="ml-m">cargurus.navigate zip=${job.zip_codes[0]}</span></div>
-        ${job.error_message?`<div class="ml-line"><span class="ml-t">00:00:12</span><span style="color:#f87171">ERR </span><span class="ml-m">${job.error_message.split(':')[0]}</span></div>`:`<div class="ml-line"><span class="ml-t">00:00:14</span><span class="ml-ok">OK  </span><span class="ml-m">cargurus.done total=${Math.floor(job.total_found/2)}</span></div>`}
-        <div class="ml-line"><span class="ml-t">00:00:15</span><span class="ml-ok">OK  </span><span class="ml-m">task.done found=${job.total_found} new=${job.total_new} status=${job.status}</span></div>
-      </div>
-    </div>
-
     <div style="display:flex;gap:8px;padding-top:8px">
       <a href="results.html" class="btn btn-primary" style="flex:1;justify-content:center">View Listings →</a>
-      <button class="btn btn-danger" onclick="alert('Job re-queued (demo)')">Re-run</button>
     </div>
   `;
 }
 
 function openNewJob(){ window.location.href='index.html'; }
 
-filterJobs();
+loadJobs();
 window.addEventListener('scroll',()=>{document.getElementById('scrolltop').classList.toggle('visible',window.scrollY>300);});
 </script>
 </body>

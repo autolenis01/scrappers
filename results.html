@@ -220,13 +220,33 @@ th.sorted.asc::after { content:' ↑'; }
 <button id="scrolltop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
 <script src="_data.js"></script>
 <script>
-let all=[...MOCK.listings], filtered=[...all], view='table', sortKey='price', sortAsc=true, page=1;
+let all=[], filtered=[], view='table', sortKey='price', sortAsc=true, page=1;
 const PER=50;
 
-// populate year filter
-const years=[...new Set(all.map(l=>l.year))].sort((a,b)=>b-a);
-const ySel=document.getElementById('f-year');
-years.forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y;ySel.appendChild(o);});
+// ── Load listings from API ──
+async function loadListings() {
+  try {
+    const data = await api.getListings({ limit: 500 });
+    all = Array.isArray(data) ? data : data.items || data.results || [];
+    filtered = [...all];
+
+    // populate year filter
+    const years = [...new Set(all.map(l => l.year).filter(Boolean))].sort((a, b) => b - a);
+    const ySel = document.getElementById('f-year');
+    ySel.innerHTML = '<option value="">Any Year</option>';
+    years.forEach(y => { const o = document.createElement('option'); o.value = y; o.textContent = y; ySel.appendChild(o); });
+
+    sortData();
+    render();
+  } catch(e) {
+    console.warn('Listings API unavailable:', e.message);
+    document.getElementById('empty-view').style.display = 'block';
+    document.getElementById('table-view').style.display = 'none';
+    document.getElementById('result-count').textContent = '0';
+    document.getElementById('count-badge').textContent = 'API unavailable';
+    document.getElementById('result-badge').textContent = 'API unavailable';
+  }
+}
 
 function applyFilters(){
   const zip=document.getElementById('f-zip').value.trim();
@@ -239,13 +259,13 @@ function applyFilters(){
   const mmax=parseInt(document.getElementById('f-mmax').value)||Infinity;
   const year=document.getElementById('f-year').value;
   filtered=all.filter(l=>{
-    if(zip&&!l.zip_code.includes(zip))return false;
+    if(zip&&!(l.zip_code||'').includes(zip))return false;
     if(make&&!(l.make||'').toLowerCase().includes(make))return false;
     if(model&&!(l.model||'').toLowerCase().includes(model))return false;
     if(src&&l.source!==src)return false;
     if(cond&&l.condition!==cond)return false;
     if(year&&String(l.year)!==year)return false;
-    if(l.price<pmin||l.price>pmax)return false;
+    if((l.price||0)<pmin||(l.price||0)>pmax)return false;
     if((l.mileage||0)>mmax)return false;
     return true;
   });
@@ -317,12 +337,12 @@ function renderTable(rows){
       <td style="font-family:var(--font-mono);font-size:12px;color:var(--dim)">${fmtMiles(l.mileage)}</td>
       <td><span class="tag ${l.condition==='new'?'tag-green':''}" style="${l.condition!=='new'?'color:var(--text2)':''}">${l.condition||'—'}</span></td>
       <td style="font-family:var(--font-mono);font-size:11px;color:var(--dim)">${l.color||'—'}</td>
-      <td style="font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:.04em">${l.vin}</td>
+      <td style="font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:.04em">${l.vin||'—'}</td>
       <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis">${l.dealer_name||'—'}</td>
       <td style="font-family:var(--font-mono);font-size:11px;color:var(--dim)">${l.dealer_phone||'—'}</td>
       <td style="font-family:var(--font-mono);font-size:11px;color:var(--dim)">${l.dealer_city||'—'}</td>
-      <td style="font-family:var(--font-mono);font-size:12px">${l.zip_code}</td>
-      <td><a href="${l.listing_url}" target="_blank" class="btn" style="padding:4px 10px;font-size:10px">View →</a></td>
+      <td style="font-family:var(--font-mono);font-size:12px">${l.zip_code||'—'}</td>
+      <td><a href="${l.listing_url||'#'}" target="_blank" class="btn" style="padding:4px 10px;font-size:10px">View →</a></td>
     </tr>`;
   }).join('');
 }
@@ -332,22 +352,22 @@ function renderCards(rows){
     <div class="listing-card">
       <span class="lc-source-badge ${l.source==='cars_com'?'tag tag-blue':'tag tag-amber'}">${l.source==='cars_com'?'cars.com':'cargurus'}</span>
       <div class="lc-head">
-        <div class="lc-title">${l.year} ${l.make} ${l.model}</div>
-        <div class="lc-trim">${l.trim} · ${l.color}</div>
+        <div class="lc-title">${l.year||''} ${l.make||''} ${l.model||''}</div>
+        <div class="lc-trim">${l.trim||'—'} · ${l.color||'—'}</div>
       </div>
       <div class="lc-price">${fmtPrice(l.price)}</div>
       <div class="lc-meta">
         <div class="lc-meta-item">🔧 ${fmtMiles(l.mileage)}</div>
-        <div class="lc-meta-item">📍 ${l.zip_code}</div>
-        <div class="lc-meta-item">🏷 ${l.condition}</div>
+        <div class="lc-meta-item">📍 ${l.zip_code||'—'}</div>
+        <div class="lc-meta-item">🏷 ${l.condition||'—'}</div>
       </div>
       <div class="lc-dealer">
-        <div class="lc-dealer-name">${l.dealer_name}</div>
-        <div class="lc-dealer-info">${l.dealer_phone} · ${l.dealer_city}, ${l.dealer_state}</div>
+        <div class="lc-dealer-name">${l.dealer_name||'—'}</div>
+        <div class="lc-dealer-info">${l.dealer_phone||'—'} · ${l.dealer_city||'—'}, ${l.dealer_state||''}</div>
       </div>
       <div class="lc-footer">
-        <div class="lc-vin">VIN: ${l.vin}</div>
-        <a href="${l.listing_url}" target="_blank" class="btn" style="padding:5px 12px;font-size:10px">View →</a>
+        <div class="lc-vin">VIN: ${l.vin||'—'}</div>
+        <a href="${l.listing_url||'#'}" target="_blank" class="btn" style="padding:5px 12px;font-size:10px">View →</a>
       </div>
     </div>`).join('');
 }
@@ -373,25 +393,17 @@ function goPage(n){
 
 function doExport(type){
   if(type==='csv'){
-    const fields=['source','year','make','model','trim','color','vin','price','mileage','condition','zip_code','dealer_name','dealer_phone','dealer_address','dealer_city','dealer_state','listing_url'];
-    const rows=[fields.join(','),...filtered.map(l=>fields.map(f=>JSON.stringify(l[f]??'')).join(','))];
-    dl('vehicle_listings.csv',rows.join('\n'),'text/csv');
+    window.open(api.exportCsvUrl(), '_blank');
   } else {
-    dl('vehicle_listings.json',JSON.stringify(filtered,null,2),'application/json');
+    window.open(api.exportJsonUrl(), '_blank');
   }
-}
-
-function dl(name,content,type){
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([content],{type}));
-  a.download=name; a.click();
 }
 
 window.addEventListener('scroll',()=>{
   document.getElementById('scrolltop').classList.toggle('visible',window.scrollY>300);
 });
 
-sortData(); render();
+loadListings();
 </script>
 </body>
 </html>

@@ -569,45 +569,95 @@ function animCount(id,target,fmt){
   };
   requestAnimationFrame(step);
 }
-const kpiObs=new IntersectionObserver(entries=>{
-  if(entries[0].isIntersecting){
-    animCount('k1',12847);
-    animCount('k2',1203);
-    animCount('k3',94,n=>n);
-    animCount('k4',318);
-    kpiObs.disconnect();
+
+// Fetch live stats from API and animate KPIs
+async function loadStats(){
+  try {
+    const stats = await api.getStats();
+    const kpiObs=new IntersectionObserver(entries=>{
+      if(entries[0].isIntersecting){
+        animCount('k1', stats.total_listings || 0);
+        animCount('k2', stats.total_dealers || 0);
+        // compute dedup rate if available
+        const totalFound = (stats.listings_by_source?.cars_com||0) + (stats.listings_by_source?.cargurus||0);
+        const dedupRate = totalFound > 0 ? Math.round((1 - stats.total_listings / Math.max(totalFound, 1)) * 100) : 0;
+        animCount('k3', Math.max(dedupRate, 0), n=>n);
+        animCount('k4', stats.total_jobs || 0);
+        kpiObs.disconnect();
+      }
+    },{threshold:0.3});
+    kpiObs.observe(document.querySelector('.kpi-strip'));
+  } catch(e) {
+    console.warn('Stats API unavailable:', e.message);
+    // show dashes on error
+    ['k1','k2','k3','k4'].forEach(id => document.getElementById(id).textContent = '—');
   }
-},{threshold:0.3});
-kpiObs.observe(document.querySelector('.kpi-strip'));
+}
+loadStats();
 
-// ticker
-const items=['2026 Toyota RAV4 · $38,200 · 12 mi','2026 Ford F-150 · $52,400 · 8 mi','2025 Honda Accord · $33,900 · 6k mi','2026 Chevrolet Silverado · $56,800 · 15 mi','2025 BMW X3 · $48,600 · 9k mi','2026 Hyundai Tucson · $34,200 · 5 mi','2026 Tesla Model Y · $46,500 · 120 mi','2025 Nissan Rogue · $32,400 · 11k mi','2026 Jeep Grand Cherokee · $49,800 · 22 mi','2025 Audi Q5 · $47,200 · 7k mi'];
-const t=document.getElementById('ticker');
-const dbl=[...items,...items];
-t.innerHTML=dbl.map(x=>`<span class="ticker-item"><span class="ticker-sep">◆</span>${x}</span>`).join('');
+// Fetch recent listings for ticker
+async function loadTicker(){
+  const t = document.getElementById('ticker');
+  try {
+    const listings = await api.getListings({ limit: 20 });
+    const items = (Array.isArray(listings) ? listings : listings.items || listings.results || [])
+      .slice(0, 10)
+      .map(l => `${l.year} ${l.make} ${l.model} · ${fmtPrice(l.price)} · ${fmtMiles(l.mileage)}`);
+    if (items.length) {
+      const dbl = [...items, ...items];
+      t.innerHTML = dbl.map(x => `<span class="ticker-item"><span class="ticker-sep">◆</span>${x}</span>`).join('');
+      return;
+    }
+  } catch(e) {
+    console.warn('Listings API unavailable for ticker:', e.message);
+  }
+  // fallback — empty ticker
+  t.innerHTML = '<span class="ticker-item"><span class="ticker-sep">◆</span>No listings yet — run a scrape to get started</span>';
+}
+loadTicker();
 
-// run simulation
-function doRun(){
-  const zips=document.getElementById('f-zips').value.trim();
-  if(!zips){document.getElementById('run-status').textContent='⚠ Enter at least one ZIP code';document.getElementById('run-status').style.color='#f87171';return;}
-  const btn=document.getElementById('run-btn');
-  const status=document.getElementById('run-status');
-  btn.disabled=true;
-  const steps=[
-    {t:'Validating ZIPs…',c:'var(--dim)'},
-    {t:'Connecting to Celery broker…',c:'var(--dim)'},
-    {t:'Job enqueued ✓',c:'var(--accent)'},
-    {t:'Workers picked up task…',c:'#60a5fa'},
-    {t:'Scraping in progress…',c:'#60a5fa'},
-    {t:'Done — redirecting to results…',c:'#4ade80'},
-  ];
-  let i=0;
-  const iv=setInterval(()=>{
-    status.textContent=steps[i].t;
-    status.style.color=steps[i].c;
-    i++;
-    if(i>=steps.length){clearInterval(iv);setTimeout(()=>{window.location.href='results.html';},500);}
-  },600);
+// Run scrape — POST to /scrape/
+async function doRun(){
+  const zips = document.getElementById('f-zips').value.trim();
+  if (!zips) {
+    document.getElementById('run-status').textContent = '⚠ Enter at least one ZIP code';
+    document.getElementById('run-status').style.color = '#f87171';
+    return;
+  }
+
+  const btn = document.getElementById('run-btn');
+  const status = document.getElementById('run-status');
+  btn.disabled = true;
+  status.textContent = 'Submitting job…';
+  status.style.color = 'var(--dim)';
+
+  const zipList = zips.split(',').map(z => z.trim()).filter(Boolean);
+  const radius = parseInt(document.getElementById('f-radius').value) || 50;
+  const pages = parseInt(document.getElementById('f-pages').value) || 3;
+  const adapters = [];
+  if (document.getElementById('chip-cars').classList.contains('on')) adapters.push('cars_com');
+  if (document.getElementById('chip-cg').classList.contains('on')) adapters.push('cargurus');
+  const respectRobots = document.getElementById('opt-robots').checked;
+  const headless = document.getElementById('opt-headless').checked;
+
+  try {
+    const result = await api.createJob({
+      zip_codes: zipList,
+      radius_miles: radius,
+      adapters: adapters.length ? adapters : ['cars_com', 'cargurus'],
+      max_pages_per_adapter: pages,
+      respect_robots: respectRobots,
+      headless: headless,
+    });
+
+    status.textContent = `✓ Job enqueued — ${result.job_id || result.id || 'submitted'}`;
+    status.style.color = '#4ade80';
+    setTimeout(() => { window.location.href = 'job.html'; }, 1200);
+  } catch(e) {
+    status.textContent = '✗ ' + e.message;
+    status.style.color = '#f87171';
+    btn.disabled = false;
+  }
 }
 </script>
 </body>
