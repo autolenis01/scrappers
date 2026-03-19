@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Dealers — AutoScrape</title>
+<link rel="stylesheet" href="_shared.css"/>
+<style>
+.dealers-header { padding:32px; border-bottom:1px solid var(--border); display:flex; align-items:flex-end; justify-content:space-between; }
+.dealers-title { font-family:var(--font-display); font-size:32px; font-weight:700; }
+.dealers-sub { font-family:var(--font-mono); font-size:11px; color:var(--dim); margin-top:4px; }
+
+.dealer-filter { padding:14px 32px; border-bottom:1px solid var(--border); background:var(--bg2); display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+
+/* DEALER GRID */
+.dealer-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:1px; background:var(--border); }
+
+.dealer-card {
+  background:var(--bg); padding:28px;
+  transition:background var(--transition);
+  display:flex; flex-direction:column;
+  position:relative; overflow:hidden;
+}
+.dealer-card:hover { background:var(--bg2); }
+.dealer-card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:2px;
+  background:linear-gradient(90deg, var(--accent), transparent);
+  opacity:0; transition:opacity var(--transition);
+}
+.dealer-card:hover::before { opacity:1; }
+
+.dc-rank {
+  position:absolute; top:20px; right:20px;
+  font-family:var(--font-display); font-size:40px; font-weight:800;
+  color:var(--border2); line-height:1;
+}
+.dc-name { font-family:var(--font-display); font-size:18px; font-weight:700; margin-bottom:6px; padding-right:50px; line-height:1.2; }
+.dc-address { font-family:var(--font-mono); font-size:11px; color:var(--dim); margin-bottom:20px; line-height:1.6; }
+.dc-stats { display:grid; grid-template-columns:1fr 1fr 1fr; gap:1px; background:var(--border); margin-bottom:20px; }
+.dc-stat { background:var(--bg2); padding:12px 14px; }
+.dc-stat-n { font-family:var(--font-display); font-size:22px; font-weight:700; color:var(--text); line-height:1; }
+.dc-stat-l { font-family:var(--font-mono); font-size:9px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-top:3px; }
+.dc-contact { display:flex; flex-direction:column; gap:6px; margin-bottom:20px; }
+.dc-contact-row { display:flex; align-items:center; gap:8px; font-family:var(--font-mono); font-size:11px; color:var(--dim); }
+.dc-contact-icon { width:16px; text-align:center; flex-shrink:0; }
+.dc-footer { display:flex; gap:8px; margin-top:auto; }
+.dc-source-tags { display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap; }
+
+/* SUMMARY ROW */
+.summary-strip { display:grid; grid-template-columns:repeat(3,1fr); border-bottom:1px solid var(--border); background:var(--border); gap:1px; }
+.summary-cell { background:var(--bg2); padding:24px 32px; }
+.summary-n { font-family:var(--font-display); font-size:36px; font-weight:700; color:var(--text); }
+.summary-l { font-family:var(--font-mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); margin-top:4px; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="index.html" class="nav-logo">Auto<span>Scrape</span></a>
+  <ul class="nav-links">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="dashboard.html">Dashboard</a></li>
+    <li><a href="results.html">Results</a></li>
+    <li><a href="dealers.html" class="active">Dealers</a></li>
+    <li><a href="docs.html">API Docs</a></li>
+  </ul>
+  <div class="nav-right">
+    <span class="result-count-badge tag tag-amber" id="dealer-count" style="padding:4px 12px;font-family:var(--font-mono);font-size:10px">— dealers</span>
+    <a href="results.html" class="nav-pill">View Listings</a>
+  </div>
+</nav>
+
+<div class="page">
+
+  <!-- SUMMARY -->
+  <div class="summary-strip">
+    <div class="summary-cell"><div class="summary-n" id="s-dealers">—</div><div class="summary-l">Unique Dealers</div></div>
+    <div class="summary-cell"><div class="summary-n" id="s-listings">—</div><div class="summary-l">Total Listings</div></div>
+    <div class="summary-cell"><div class="summary-n" id="s-avg">—</div><div class="summary-l">Avg Listings / Dealer</div></div>
+  </div>
+
+  <!-- HEADER -->
+  <div class="dealers-header">
+    <div>
+      <h1 class="dealers-title">Dealer Directory</h1>
+      <div class="dealers-sub">Deduplicated by name · phone · ZIP · <span id="state-count">—</span> states covered</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn" onclick="doExport()">⬇ Export CSV</button>
+    </div>
+  </div>
+
+  <!-- FILTER -->
+  <div class="dealer-filter">
+    <input class="inp" id="d-search" style="width:220px" placeholder="Search dealer name…" oninput="applyFilter()"/>
+    <input class="inp" id="d-city"   style="width:130px" placeholder="City" oninput="applyFilter()"/>
+    <input class="inp" id="d-zip"    style="width:90px"  placeholder="ZIP"  oninput="applyFilter()"/>
+    <select class="sel" id="d-state" style="width:80px" onchange="applyFilter()"><option value="">State</option><option value="TX">TX</option></select>
+    <select class="sel" id="d-sort" style="width:160px" onchange="applyFilter()">
+      <option value="listings">Most Listings</option>
+      <option value="name">Name A–Z</option>
+      <option value="city">City A–Z</option>
+    </select>
+    <span class="tag tag-amber" id="d-count" style="font-family:var(--font-mono);font-size:10px;padding:4px 10px">—</span>
+  </div>
+
+  <!-- GRID -->
+  <div class="dealer-grid" id="dealer-grid"></div>
+
+  <footer class="footer" style="margin-top:1px">
+    <div class="footer-brand">Auto<span>Scrape</span></div>
+    <ul class="footer-links">
+      <li><a href="index.html">Home</a></li><li><a href="results.html">Listings</a></li><li><a href="docs.html">API</a></li>
+    </ul>
+    <div class="footer-copy">Dealer data sourced from public listings · For research use</div>
+  </footer>
+</div>
+
+<button id="scrolltop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+<script src="_data.js"></script>
+<script>
+// build enriched dealer list from mock listings
+function buildDealers(){
+  const map={};
+  MOCK.listings.forEach(l=>{
+    const k=l.dealer_name;
+    if(!map[k]){
+      map[k]={
+        name:l.dealer_name, phone:l.dealer_phone, addr:l.dealer_address,
+        city:l.dealer_city, state:l.dealer_state, zip:l.dealer_zip,
+        website:l.dealer_website||'', listings:0,
+        sources:new Set(), makes:new Set(),
+        avgPrice:[], minPrice:Infinity, maxPrice:0,
+      };
+    }
+    map[k].listings++;
+    map[k].sources.add(l.source);
+    map[k].makes.add(l.make);
+    if(l.price){map[k].avgPrice.push(l.price);map[k].minPrice=Math.min(map[k].minPrice,l.price);map[k].maxPrice=Math.max(map[k].maxPrice,l.price);}
+  });
+  return Object.values(map).map(d=>({
+    ...d,
+    sources:[...d.sources],
+    makes:[...d.makes].slice(0,4),
+    avgPrice:d.avgPrice.length?Math.round(d.avgPrice.reduce((a,b)=>a+b,0)/d.avgPrice.length):0,
+  }));
+}
+
+let allDealers=buildDealers(), filtered=[...allDealers];
+
+// summary
+document.getElementById('s-dealers').textContent=allDealers.length;
+document.getElementById('s-listings').textContent=MOCK.listings.length.toLocaleString();
+document.getElementById('s-avg').textContent=Math.round(MOCK.listings.length/allDealers.length);
+document.getElementById('state-count').textContent=[...new Set(allDealers.map(d=>d.state).filter(Boolean))].length;
+document.getElementById('dealer-count').textContent=allDealers.length+' dealers';
+
+function applyFilter(){
+  const q=document.getElementById('d-search').value.toLowerCase();
+  const city=document.getElementById('d-city').value.toLowerCase();
+  const zip=document.getElementById('d-zip').value;
+  const state=document.getElementById('d-state').value;
+  const sort=document.getElementById('d-sort').value;
+
+  filtered=allDealers.filter(d=>{
+    if(q&&!(d.name||'').toLowerCase().includes(q))return false;
+    if(city&&!(d.city||'').toLowerCase().includes(city))return false;
+    if(zip&&!(d.zip||'').includes(zip))return false;
+    if(state&&d.state!==state)return false;
+    return true;
+  });
+
+  if(sort==='listings')filtered.sort((a,b)=>b.listings-a.listings);
+  else if(sort==='name')filtered.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  else if(sort==='city')filtered.sort((a,b)=>(a.city||'').localeCompare(b.city||''));
+
+  document.getElementById('d-count').textContent=filtered.length+' dealers';
+  renderGrid();
+}
+
+function renderGrid(){
+  document.getElementById('dealer-grid').innerHTML=filtered.map((d,i)=>`
+    <div class="dealer-card">
+      <div class="dc-rank">${String(i+1).padStart(2,'0')}</div>
+      <div class="dc-name">${d.name}</div>
+      <div class="dc-address">${[d.addr,d.city,d.state,d.zip].filter(Boolean).join(', ')}</div>
+      <div class="dc-source-tags">
+        ${d.sources.includes('cars_com')?'<span class="tag tag-blue" style="font-size:9px">cars.com</span>':''}
+        ${d.sources.includes('cargurus')?'<span class="tag tag-amber" style="font-size:9px">cargurus</span>':''}
+        ${d.makes.map(m=>`<span class="tag" style="font-size:9px">${m}</span>`).join('')}
+      </div>
+      <div class="dc-stats">
+        <div class="dc-stat"><div class="dc-stat-n">${d.listings}</div><div class="dc-stat-l">Listings</div></div>
+        <div class="dc-stat"><div class="dc-stat-n">${d.avgPrice?'$'+Math.round(d.avgPrice/1000)+'k':'—'}</div><div class="dc-stat-l">Avg Price</div></div>
+        <div class="dc-stat"><div class="dc-stat-n">${d.makes.length}</div><div class="dc-stat-l">Makes</div></div>
+      </div>
+      <div class="dc-contact">
+        ${d.phone?`<div class="dc-contact-row"><span class="dc-contact-icon">📞</span>${d.phone}</div>`:''}
+        ${d.addr?`<div class="dc-contact-row"><span class="dc-contact-icon">📍</span>${d.addr}</div>`:''}
+        ${d.website?`<div class="dc-contact-row"><span class="dc-contact-icon">🌐</span>${d.website}</div>`:''}
+      </div>
+      <div class="dc-footer">
+        <a href="results.html" class="btn btn-primary" style="flex:1;justify-content:center;font-size:10px">View Listings →</a>
+        ${d.website?`<a href="https://${d.website}" target="_blank" class="btn" style="font-size:10px">Website</a>`:''}
+      </div>
+    </div>`).join('');
+}
+
+function doExport(){
+  const fields=['name','phone','addr','city','state','zip','website','listings','avgPrice'];
+  const rows=[fields.join(','),...filtered.map(d=>fields.map(f=>JSON.stringify(d[f]??'')).join(','))];
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([rows.join('\n')],{type:'text/csv'}));
+  a.download='dealers.csv'; a.click();
+}
+
+applyFilter();
+window.addEventListener('scroll',()=>{document.getElementById('scrolltop').classList.toggle('visible',window.scrollY>300);});
+</script>
+</body>
+</html>

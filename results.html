@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Results — AutoScrape</title>
+<link rel="stylesheet" href="_shared.css"/>
+<style>
+.results-layout { display:flex; flex-direction:column; }
+.filter-panel {
+  position: sticky; top: var(--nav-h); z-index: 100;
+  background: var(--bg2); border-bottom: 1px solid var(--border);
+  padding: 14px 28px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+}
+.filter-panel .inp { width:auto; }
+.filter-sep { width:1px; height:24px; background:var(--border2); flex-shrink:0; }
+
+.results-header {
+  padding: 28px 32px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.results-title { font-family:var(--font-display); font-size:28px; font-weight:700; }
+.results-meta { font-family:var(--font-mono); font-size:11px; color:var(--dim); margin-top:4px; }
+
+.result-count-badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--accent);
+  background: var(--accent-dim);
+  border: 1px solid rgba(212,168,67,0.25);
+  padding: 4px 12px;
+}
+
+/* CARD GRID */
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1px;
+  background: var(--border);
+}
+.listing-card {
+  background: var(--bg);
+  padding: 24px;
+  position: relative;
+  transition: background var(--transition);
+}
+.listing-card:hover { background: var(--bg2); }
+.lc-source-badge {
+  position: absolute; top:16px; right:16px;
+  font-family:var(--font-mono); font-size:9px; letter-spacing:0.08em;
+  padding:2px 8px; text-transform:uppercase;
+}
+.lc-head { margin-bottom:14px; padding-right:80px; }
+.lc-title { font-family:var(--font-display); font-size:17px; font-weight:600; line-height:1.2; margin-bottom:4px; }
+.lc-trim { font-family:var(--font-mono); font-size:10px; color:var(--dim); letter-spacing:0.04em; }
+.lc-price { font-family:var(--font-display); font-size:24px; font-weight:700; color:var(--accent); margin-bottom:14px; }
+.lc-meta { display:flex; gap:16px; margin-bottom:16px; flex-wrap:wrap; }
+.lc-meta-item { font-family:var(--font-mono); font-size:10px; color:var(--dim); letter-spacing:0.04em; display:flex; gap:4px; align-items:center; }
+.lc-dealer {
+  background: var(--bg2); border:1px solid var(--border);
+  padding: 12px; margin-bottom:14px;
+}
+.lc-dealer-name { font-size:12px; color:var(--text2); margin-bottom:3px; }
+.lc-dealer-info { font-family:var(--font-mono); font-size:10px; color:var(--muted); }
+.lc-footer { display:flex; align-items:center; justify-content:space-between; }
+.lc-vin { font-family:var(--font-mono); font-size:9px; color:var(--muted); letter-spacing:0.04em; }
+
+/* VIEW TOGGLE */
+.view-toggle { display:flex; border:1px solid var(--border2); overflow:hidden; }
+.vt-btn { padding:7px 12px; background:none; border:none; border-right:1px solid var(--border2); color:var(--dim); cursor:pointer; transition:all var(--transition); font-size:13px; }
+.vt-btn:last-child{border-right:none;}
+.vt-btn.on { background:var(--accent); color:var(--bg); }
+
+/* PAGINATION */
+.pagination { display:flex; align-items:center; justify-content:center; gap:4px; padding:28px; border-top:1px solid var(--border); }
+.pg-btn { font-family:var(--font-mono); font-size:11px; min-width:34px; height:34px; padding:0 8px; display:flex; align-items:center; justify-content:center; border:1px solid var(--border2); background:none; color:var(--dim); cursor:pointer; transition:all var(--transition); }
+.pg-btn:hover { border-color:var(--muted); color:var(--text); }
+.pg-btn.on { background:var(--accent); color:var(--bg); border-color:var(--accent); }
+.pg-btn:disabled { opacity:0.3; cursor:not-allowed; }
+
+/* SORT ARROWS */
+th.sorted::after { content:' ↓'; color:var(--accent); }
+th.sorted.asc::after { content:' ↑'; }
+
+/* EMPTY */
+.empty { text-align:center; padding:80px; }
+.empty-title { font-family:var(--font-display); font-size:28px; font-weight:700; color:var(--muted); margin-bottom:8px; }
+.empty-sub { font-family:var(--font-mono); font-size:12px; color:var(--muted); }
+
+/* EXPORT DROPDOWN */
+.export-wrap { position:relative; }
+.export-menu { display:none; position:absolute; right:0; top:calc(100% + 6px); background:var(--bg2); border:1px solid var(--border2); min-width:140px; z-index:200; }
+.export-wrap:hover .export-menu { display:block; }
+.exp-item { display:block; font-family:var(--font-mono); font-size:11px; color:var(--dim); padding:10px 16px; cursor:pointer; transition:all var(--transition); border-bottom:1px solid var(--border); }
+.exp-item:last-child{border:none;}
+.exp-item:hover{color:var(--accent);background:var(--accent-glow);}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="index.html" class="nav-logo">Auto<span>Scrape</span></a>
+  <ul class="nav-links">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="dashboard.html">Dashboard</a></li>
+    <li><a href="results.html" class="active">Results</a></li>
+    <li><a href="dealers.html">Dealers</a></li>
+    <li><a href="docs.html">API Docs</a></li>
+  </ul>
+  <div class="nav-right">
+    <div class="live-indicator"><div class="live-dot"></div><span id="result-badge">— listings</span></div>
+    <div class="export-wrap">
+      <button class="nav-pill">Export ▾</button>
+      <div class="export-menu">
+        <span class="exp-item" onclick="doExport('csv')">⬇ CSV</span>
+        <span class="exp-item" onclick="doExport('json')">⬇ JSON</span>
+      </div>
+    </div>
+    <a href="index.html" class="nav-pill cta">+ New Scrape</a>
+  </div>
+</nav>
+
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="results-header">
+    <div>
+      <h1 class="results-title">Listings</h1>
+      <div class="results-meta">Showing <span id="result-count">—</span> results · sorted by <span id="sort-display">price</span></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="view-toggle">
+        <button class="vt-btn on" id="btn-table" onclick="setView('table')">☰</button>
+        <button class="vt-btn" id="btn-cards" onclick="setView('cards')">⊞</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FILTER BAR -->
+  <div class="filter-panel">
+    <input class="inp" id="f-zip"   style="width:100px" placeholder="ZIP"/>
+    <input class="inp" id="f-make"  style="width:110px" placeholder="Make"/>
+    <input class="inp" id="f-model" style="width:110px" placeholder="Model"/>
+    <select class="sel" id="f-source" style="width:130px">
+      <option value="">All Sources</option>
+      <option value="cars_com">Cars.com</option>
+      <option value="cargurus">CarGurus</option>
+    </select>
+    <select class="sel" id="f-cond" style="width:120px">
+      <option value="">Condition</option>
+      <option value="used">Used</option>
+      <option value="new">New</option>
+    </select>
+    <div class="filter-sep"></div>
+    <span style="font-family:var(--font-mono);font-size:10px;color:var(--muted);letter-spacing:.06em">PRICE</span>
+    <input class="inp" id="f-pmin" style="width:80px" placeholder="Min $"/>
+    <span style="color:var(--muted)">—</span>
+    <input class="inp" id="f-pmax" style="width:80px" placeholder="Max $"/>
+    <div class="filter-sep"></div>
+    <span style="font-family:var(--font-mono);font-size:10px;color:var(--muted);letter-spacing:.06em">MILES</span>
+    <input class="inp" id="f-mmax" style="width:80px" placeholder="Max"/>
+    <div class="filter-sep"></div>
+    <select class="sel" id="f-year" style="width:100px"><option value="">Any Year</option></select>
+    <button class="btn btn-primary" style="padding:9px 18px" onclick="applyFilters()">Apply</button>
+    <button class="btn" onclick="resetFilters()">Reset</button>
+    <span class="result-count-badge" id="count-badge">0 results</span>
+  </div>
+
+  <!-- TABLE VIEW -->
+  <div id="table-view">
+    <div style="overflow-x:auto">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th onclick="sortBy('source')">Source</th>
+            <th onclick="sortBy('year')">Yr</th>
+            <th onclick="sortBy('make')">Make</th>
+            <th onclick="sortBy('model')">Model</th>
+            <th>Trim</th>
+            <th onclick="sortBy('price')" class="sorted">Price</th>
+            <th onclick="sortBy('mileage')">Miles</th>
+            <th onclick="sortBy('condition')">Cond</th>
+            <th>Color</th>
+            <th>VIN</th>
+            <th onclick="sortBy('dealer_name')">Dealer</th>
+            <th>Phone</th>
+            <th onclick="sortBy('dealer_city')">City</th>
+            <th onclick="sortBy('zip_code')">ZIP</th>
+            <th>Link</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- CARD VIEW -->
+  <div id="cards-view" class="cards-grid" style="display:none"></div>
+
+  <!-- EMPTY -->
+  <div id="empty-view" class="empty" style="display:none">
+    <div class="empty-title">No Results</div>
+    <div class="empty-sub">Try adjusting your filters or running a new scrape.</div>
+  </div>
+
+  <!-- PAGINATION -->
+  <div class="pagination" id="pagination"></div>
+
+  <footer class="footer">
+    <div class="footer-brand">Auto<span>Scrape</span></div>
+    <ul class="footer-links">
+      <li><a href="index.html">Home</a></li><li><a href="dashboard.html">Dashboard</a></li><li><a href="docs.html">API</a></li>
+    </ul>
+    <div class="footer-copy">For research use only</div>
+  </footer>
+</div>
+
+<button id="scrolltop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+<script src="_data.js"></script>
+<script>
+let all=[...MOCK.listings], filtered=[...all], view='table', sortKey='price', sortAsc=true, page=1;
+const PER=50;
+
+// populate year filter
+const years=[...new Set(all.map(l=>l.year))].sort((a,b)=>b-a);
+const ySel=document.getElementById('f-year');
+years.forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y;ySel.appendChild(o);});
+
+function applyFilters(){
+  const zip=document.getElementById('f-zip').value.trim();
+  const make=document.getElementById('f-make').value.trim().toLowerCase();
+  const model=document.getElementById('f-model').value.trim().toLowerCase();
+  const src=document.getElementById('f-source').value;
+  const cond=document.getElementById('f-cond').value;
+  const pmin=parseFloat(document.getElementById('f-pmin').value)||0;
+  const pmax=parseFloat(document.getElementById('f-pmax').value)||Infinity;
+  const mmax=parseInt(document.getElementById('f-mmax').value)||Infinity;
+  const year=document.getElementById('f-year').value;
+  filtered=all.filter(l=>{
+    if(zip&&!l.zip_code.includes(zip))return false;
+    if(make&&!(l.make||'').toLowerCase().includes(make))return false;
+    if(model&&!(l.model||'').toLowerCase().includes(model))return false;
+    if(src&&l.source!==src)return false;
+    if(cond&&l.condition!==cond)return false;
+    if(year&&String(l.year)!==year)return false;
+    if(l.price<pmin||l.price>pmax)return false;
+    if((l.mileage||0)>mmax)return false;
+    return true;
+  });
+  sortData(); page=1; render();
+}
+
+function resetFilters(){
+  ['f-zip','f-make','f-model','f-pmin','f-pmax','f-mmax'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-source').value='';
+  document.getElementById('f-cond').value='';
+  document.getElementById('f-year').value='';
+  filtered=[...all]; sortData(); page=1; render();
+}
+
+function sortBy(key){
+  if(sortKey===key){sortAsc=!sortAsc;}else{sortKey=key;sortAsc=true;}
+  document.querySelectorAll('th').forEach(t=>t.classList.remove('sorted','asc'));
+  event.target.classList.add('sorted');
+  if(sortAsc)event.target.classList.add('asc');
+  document.getElementById('sort-display').textContent=key.replace('_',' ');
+  sortData(); render();
+}
+
+function sortData(){
+  filtered.sort((a,b)=>{
+    let av=a[sortKey],bv=b[sortKey];
+    if(av==null)av=sortAsc?Infinity:-Infinity;
+    if(bv==null)bv=sortAsc?Infinity:-Infinity;
+    if(typeof av==='string')return sortAsc?av.localeCompare(bv):bv.localeCompare(av);
+    return sortAsc?av-bv:bv-av;
+  });
+}
+
+function setView(v){
+  view=v;
+  document.getElementById('btn-table').classList.toggle('on',v==='table');
+  document.getElementById('btn-cards').classList.toggle('on',v==='cards');
+  document.getElementById('table-view').style.display=v==='table'?'':'none';
+  document.getElementById('cards-view').style.display=v==='cards'?'grid':'none';
+  render();
+}
+
+function render(){
+  const count=filtered.length;
+  document.getElementById('result-count').textContent=count.toLocaleString();
+  document.getElementById('count-badge').textContent=count.toLocaleString()+' results';
+  document.getElementById('result-badge').textContent=count.toLocaleString()+' listings';
+
+  const start=(page-1)*PER, slice=filtered.slice(start,start+PER);
+
+  document.getElementById('empty-view').style.display=!slice.length?'block':'none';
+  if(!slice.length){document.getElementById('table-view').style.display='none';document.getElementById('cards-view').style.display='none';}
+  else if(view==='table'){document.getElementById('table-view').style.display='';renderTable(slice);}
+  else{document.getElementById('cards-view').style.display='grid';renderCards(slice);}
+
+  renderPagination();
+}
+
+function renderTable(rows){
+  document.getElementById('table-body').innerHTML=rows.map(l=>{
+    const src=l.source==='cars_com'?'<span class="tag tag-blue">cars.com</span>':'<span class="tag tag-amber">cargurus</span>';
+    return `<tr>
+      <td>${src}</td>
+      <td style="font-family:var(--font-mono);font-size:12px">${l.year||'—'}</td>
+      <td style="font-weight:500">${l.make||'—'}</td>
+      <td>${l.model||'—'}</td>
+      <td style="font-family:var(--font-mono);font-size:11px;color:var(--dim)">${l.trim||'—'}</td>
+      <td style="font-family:var(--font-mono);font-size:13px;color:var(--accent);font-weight:500">${fmtPrice(l.price)}</td>
+      <td style="font-family:var(--font-mono);font-size:12px;color:var(--dim)">${fmtMiles(l.mileage)}</td>
+      <td><span class="tag ${l.condition==='new'?'tag-green':''}" style="${l.condition!=='new'?'color:var(--text2)':''}">${l.condition||'—'}</span></td>
+      <td style="font-family:var(--font-mono);font-size:11px;color:var(--dim)">${l.color||'—'}</td>
+      <td style="font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:.04em">${l.vin}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis">${l.dealer_name||'—'}</td>
+      <td style="font-family:var(--font-mono);font-size:11px;color:var(--dim)">${l.dealer_phone||'—'}</td>
+      <td style="font-family:var(--font-mono);font-size:11px;color:var(--dim)">${l.dealer_city||'—'}</td>
+      <td style="font-family:var(--font-mono);font-size:12px">${l.zip_code}</td>
+      <td><a href="${l.listing_url}" target="_blank" class="btn" style="padding:4px 10px;font-size:10px">View →</a></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderCards(rows){
+  document.getElementById('cards-view').innerHTML=rows.map(l=>`
+    <div class="listing-card">
+      <span class="lc-source-badge ${l.source==='cars_com'?'tag tag-blue':'tag tag-amber'}">${l.source==='cars_com'?'cars.com':'cargurus'}</span>
+      <div class="lc-head">
+        <div class="lc-title">${l.year} ${l.make} ${l.model}</div>
+        <div class="lc-trim">${l.trim} · ${l.color}</div>
+      </div>
+      <div class="lc-price">${fmtPrice(l.price)}</div>
+      <div class="lc-meta">
+        <div class="lc-meta-item">🔧 ${fmtMiles(l.mileage)}</div>
+        <div class="lc-meta-item">📍 ${l.zip_code}</div>
+        <div class="lc-meta-item">🏷 ${l.condition}</div>
+      </div>
+      <div class="lc-dealer">
+        <div class="lc-dealer-name">${l.dealer_name}</div>
+        <div class="lc-dealer-info">${l.dealer_phone} · ${l.dealer_city}, ${l.dealer_state}</div>
+      </div>
+      <div class="lc-footer">
+        <div class="lc-vin">VIN: ${l.vin}</div>
+        <a href="${l.listing_url}" target="_blank" class="btn" style="padding:5px 12px;font-size:10px">View →</a>
+      </div>
+    </div>`).join('');
+}
+
+function renderPagination(){
+  const total=Math.ceil(filtered.length/PER);
+  const pg=document.getElementById('pagination');
+  if(total<=1){pg.innerHTML='';return;}
+  let html=`<button class="pg-btn" onclick="goPage(${page-1})" ${page===1?'disabled':''}>‹</button>`;
+  for(let i=1;i<=total;i++){
+    if(i===1||i===total||Math.abs(i-page)<=2)html+=`<button class="pg-btn ${i===page?'on':''}" onclick="goPage(${i})">${i}</button>`;
+    else if(Math.abs(i-page)===3)html+=`<span style="color:var(--muted);font-family:var(--font-mono);font-size:12px;padding:0 4px">…</span>`;
+  }
+  html+=`<button class="pg-btn" onclick="goPage(${page+1})" ${page===total?'disabled':''}>›</button>`;
+  pg.innerHTML=html;
+}
+
+function goPage(n){
+  const t=Math.ceil(filtered.length/PER);
+  if(n<1||n>t)return;
+  page=n; render(); window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function doExport(type){
+  if(type==='csv'){
+    const fields=['source','year','make','model','trim','color','vin','price','mileage','condition','zip_code','dealer_name','dealer_phone','dealer_address','dealer_city','dealer_state','listing_url'];
+    const rows=[fields.join(','),...filtered.map(l=>fields.map(f=>JSON.stringify(l[f]??'')).join(','))];
+    dl('vehicle_listings.csv',rows.join('\n'),'text/csv');
+  } else {
+    dl('vehicle_listings.json',JSON.stringify(filtered,null,2),'application/json');
+  }
+}
+
+function dl(name,content,type){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([content],{type}));
+  a.download=name; a.click();
+}
+
+window.addEventListener('scroll',()=>{
+  document.getElementById('scrolltop').classList.toggle('visible',window.scrollY>300);
+});
+
+sortData(); render();
+</script>
+</body>
+</html>

@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Dashboard — AutoScrape</title>
+<link rel="stylesheet" href="_shared.css"/>
+<style>
+.dash { display:grid; grid-template-columns:220px 1fr; min-height:calc(100vh - var(--nav-h)); }
+.sidebar {
+  border-right: 1px solid var(--border);
+  padding: 24px 0;
+  position: sticky;
+  top: var(--nav-h);
+  height: calc(100vh - var(--nav-h));
+  overflow-y: auto;
+  background: var(--bg2);
+  display: flex;
+  flex-direction: column;
+}
+.sidebar-section { margin-bottom: 8px; }
+.sidebar-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0 20px 8px;
+}
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 20px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--dim);
+  text-decoration: none;
+  transition: all var(--transition);
+  border-left: 2px solid transparent;
+}
+.sidebar-link:hover { color: var(--text); background: var(--bg3); }
+.sidebar-link.active { color: var(--accent); background: var(--accent-glow); border-left-color: var(--accent); }
+.sidebar-link .icon { width:16px; text-align:center; font-size:13px; }
+.sidebar-bottom {
+  margin-top: auto;
+  padding: 20px;
+  border-top: 1px solid var(--border);
+}
+.version-tag { font-family:var(--font-mono); font-size:10px; color:var(--muted); }
+
+.main { flex:1; padding:0; }
+
+/* KPI GRID */
+.kpi-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--border); margin:0; }
+.kpi-grid .stat-card { border:none; }
+
+/* JOBS TABLE */
+.jobs-section { border-bottom: 1px solid var(--border); }
+.table-scroll { overflow-x:auto; }
+
+/* CHART SECTION */
+.chart-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-bottom: 1px solid var(--border);
+  background: var(--border);
+  gap: 1px;
+}
+.chart-panel {
+  background: var(--bg);
+  padding: 28px 32px;
+}
+.chart-panel-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 20px;
+}
+.bar-chart { display:flex; flex-direction:column; gap:10px; }
+.bar-row { display:flex; align-items:center; gap:12px; }
+.bar-name { font-family:var(--font-mono); font-size:11px; color:var(--text2); width:120px; flex-shrink:0; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; }
+.bar-track { flex:1; height:8px; background:var(--bg2); border:1px solid var(--border); }
+.bar-fill { height:100%; background:var(--accent); transition:width 1s ease; }
+.bar-val { font-family:var(--font-mono); font-size:11px; color:var(--dim); width:40px; text-align:right; flex-shrink:0; }
+
+.source-pie {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.pie-row { display:flex; align-items:center; gap:12px; }
+.pie-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.pie-label { font-family:var(--font-mono); font-size:12px; color:var(--text2); flex:1; }
+.pie-val { font-family:var(--font-mono); font-size:12px; color:var(--dim); }
+.pie-pct { font-family:var(--font-mono); font-size:12px; color:var(--accent); width:36px; text-align:right; }
+
+/* HEALTH GRID */
+.health-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--border); }
+.health-card { background:var(--bg); padding:24px; }
+.health-name { font-family:var(--font-display); font-size:15px; font-weight:600; margin-bottom:6px; }
+.health-status { display:flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:11px; margin-bottom:16px; }
+.health-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.health-meta { display:flex; flex-direction:column; gap:6px; }
+.health-row { display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:11px; }
+.health-key { color:var(--dim); }
+.health-value { color:var(--text2); }
+
+/* NEW JOB MODAL */
+.modal-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:800;
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none; transition:opacity var(--transition);
+  backdrop-filter:blur(4px);
+}
+.modal-overlay.open { opacity:1; pointer-events:all; }
+.modal {
+  background:var(--bg2); border:1px solid var(--border2);
+  width:100%; max-width:500px; padding:40px;
+  transform:translateY(16px); transition:transform var(--transition);
+}
+.modal-overlay.open .modal { transform:translateY(0); }
+.modal-title { font-family:var(--font-display); font-size:22px; font-weight:700; margin-bottom:28px; }
+.modal-footer { display:flex; gap:10px; justify-content:flex-end; margin-top:28px; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="index.html" class="nav-logo">Auto<span>Scrape</span></a>
+  <ul class="nav-links">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="dashboard.html" class="active">Dashboard</a></li>
+    <li><a href="results.html">Results</a></li>
+    <li><a href="dealers.html">Dealers</a></li>
+    <li><a href="docs.html">API Docs</a></li>
+  </ul>
+  <div class="nav-right">
+    <div class="live-indicator"><div class="live-dot"></div><span id="nav-time">—</span></div>
+    <button class="nav-pill cta" onclick="openModal()">+ New Job</button>
+  </div>
+</nav>
+
+<div class="page">
+<div class="dash">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Monitor</div>
+      <a class="sidebar-link active" href="dashboard.html"><span class="icon">▤</span>Overview</a>
+      <a class="sidebar-link" href="job.html"><span class="icon">⚙</span>Jobs</a>
+      <a class="sidebar-link" href="#"><span class="icon">♥</span>Adapter Health</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Data</div>
+      <a class="sidebar-link" href="results.html"><span class="icon">☰</span>Listings</a>
+      <a class="sidebar-link" href="dealers.html"><span class="icon">🏪</span>Dealers</a>
+      <a class="sidebar-link" href="#"><span class="icon">↓</span>Export</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Config</div>
+      <a class="sidebar-link" href="docs.html"><span class="icon">⊞</span>API Docs</a>
+      <a class="sidebar-link" href="#"><span class="icon">⚑</span>Settings</a>
+    </div>
+    <div class="sidebar-bottom">
+      <div class="version-tag">AutoScrape v2.0.0<br>Celery + Redis + PG</div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- KPI ROW -->
+    <div class="kpi-grid">
+      <div class="stat-card">
+        <div class="stat-label">Total Listings</div>
+        <div class="stat-value" id="kpi-listings">12,847</div>
+        <div class="stat-delta up">↑ 98 today</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Dealers</div>
+        <div class="stat-value" id="kpi-dealers">1,203</div>
+        <div class="stat-delta up">↑ 4 new</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Jobs (30d)</div>
+        <div class="stat-value" id="kpi-jobs">318</div>
+        <div class="stat-sub" id="kpi-running">2 running now</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg Price</div>
+        <div class="stat-value">$31,240</div>
+        <div class="stat-delta down">↓ $420 vs last week</div>
+      </div>
+    </div>
+
+    <!-- CHART ROW -->
+    <div class="chart-row">
+      <div class="chart-panel">
+        <div class="chart-panel-title">Top Makes by Listing Count</div>
+        <div class="bar-chart" id="makes-chart"></div>
+      </div>
+      <div class="chart-panel">
+        <div class="chart-panel-title">Listings by Source</div>
+        <div class="source-pie" id="source-chart"></div>
+        <div style="margin-top:28px">
+          <div class="chart-panel-title">Job Status Breakdown (30d)</div>
+          <div class="source-pie" id="status-chart"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADAPTER HEALTH -->
+    <div class="section-head"><span class="section-title">Adapter Health</span><button class="btn btn-ghost" onclick="refreshHealth()">↻ Refresh</button></div>
+    <div class="health-grid">
+      <div class="health-card">
+        <div class="health-name">cars.com</div>
+        <div class="health-status"><div class="health-dot" style="background:#4ade80;box-shadow:0 0 6px #4ade80"></div><span style="color:#4ade80;font-size:10px;letter-spacing:.08em">HEALTHY</span></div>
+        <div class="health-meta">
+          <div class="health-row"><span class="health-key">Response</span><span class="health-value">1,840 ms</span></div>
+          <div class="health-row"><span class="health-key">Last check</span><span class="health-value">2 min ago</span></div>
+          <div class="health-row"><span class="health-key">Listings/run</span><span class="health-value">48</span></div>
+          <div class="health-row"><span class="health-key">Mode</span><span class="health-value">HTTPX + BS4</span></div>
+        </div>
+      </div>
+      <div class="health-card">
+        <div class="health-name">CarGurus</div>
+        <div class="health-status"><div class="health-dot" style="background:#4ade80;box-shadow:0 0 6px #4ade80"></div><span style="color:#4ade80;font-size:10px;letter-spacing:.08em">HEALTHY</span></div>
+        <div class="health-meta">
+          <div class="health-row"><span class="health-key">Response</span><span class="health-value">3,210 ms</span></div>
+          <div class="health-row"><span class="health-key">Last check</span><span class="health-value">2 min ago</span></div>
+          <div class="health-row"><span class="health-key">Listings/run</span><span class="health-value">57</span></div>
+          <div class="health-row"><span class="health-key">Mode</span><span class="health-value">Playwright</span></div>
+        </div>
+      </div>
+      <div class="health-card">
+        <div class="health-name">Beat Scheduler</div>
+        <div class="health-status"><div class="health-dot" style="background:#4ade80;box-shadow:0 0 6px #4ade80"></div><span style="color:#4ade80;font-size:10px;letter-spacing:.08em">RUNNING</span></div>
+        <div class="health-meta">
+          <div class="health-row"><span class="health-key">Next check</span><span class="health-value">13 min</span></div>
+          <div class="health-row"><span class="health-key">Interval</span><span class="health-value">15 min</span></div>
+          <div class="health-row"><span class="health-key">Uptime</span><span class="health-value">6d 14h</span></div>
+          <div class="health-row"><span class="health-key">Broker</span><span class="health-value">Redis</span></div>
+        </div>
+      </div>
+    </div>
+    <div style="border-top:1px solid var(--border)"></div>
+
+    <!-- RECENT JOBS -->
+    <div class="section-head jobs-section">
+      <span class="section-title">Recent Jobs</span>
+      <div style="display:flex;gap:8px">
+        <a href="job.html" class="btn btn-ghost">View All →</a>
+        <button class="nav-pill cta" onclick="openModal()">+ New Job</button>
+      </div>
+    </div>
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Job ID</th><th>Status</th><th>ZIPs</th><th>Adapters</th>
+            <th>Found</th><th>New</th><th>Created</th><th>Duration</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="jobs-tbody"></tbody>
+      </table>
+    </div>
+
+    <footer class="footer">
+      <div class="footer-brand">Auto<span>Scrape</span></div>
+      <ul class="footer-links">
+        <li><a href="index.html">Home</a></li><li><a href="results.html">Results</a></li><li><a href="docs.html">API</a></li>
+      </ul>
+      <div class="footer-copy">© 2026 AutoScrape · For research use only</div>
+    </footer>
+  </main>
+</div>
+</div>
+
+<!-- NEW JOB MODAL -->
+<div class="modal-overlay" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-title">New Scrape Job</div>
+    <div class="form-group" style="margin-bottom:16px">
+      <label class="stat-label" style="margin-bottom:6px;display:block">ZIP Codes (comma-separated)</label>
+      <input class="inp" id="m-zips" value="75201, 75034" placeholder="75201, 75093…"/>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+      <div>
+        <label class="stat-label" style="margin-bottom:6px;display:block">Radius (miles)</label>
+        <input class="inp" id="m-radius" type="number" value="50"/>
+      </div>
+      <div>
+        <label class="stat-label" style="margin-bottom:6px;display:block">Pages / Adapter</label>
+        <input class="inp" id="m-pages" type="number" value="3"/>
+      </div>
+    </div>
+    <label class="stat-label" style="margin-bottom:8px;display:block">Adapters</label>
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <label style="display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:11px;color:var(--text2);cursor:pointer;border:1px solid var(--border2);padding:8px 14px">
+        <input type="checkbox" id="m-cars" checked style="accent-color:var(--accent)"/> cars.com
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:11px;color:var(--text2);cursor:pointer;border:1px solid var(--border2);padding:8px 14px">
+        <input type="checkbox" id="m-cg" checked style="accent-color:var(--accent)"/> CarGurus
+      </label>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitJob()">▶ Enqueue Job</button>
+    </div>
+  </div>
+</div>
+
+<button id="scrolltop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+<script src="_data.js"></script>
+<script>
+// clock
+setInterval(()=>{document.getElementById('nav-time').textContent=new Date().toLocaleTimeString();},1000);
+document.getElementById('nav-time').textContent=new Date().toLocaleTimeString();
+
+// jobs table
+function renderJobs(){
+  const jobs=MOCK.jobs.slice(0,12);
+  const tbody=document.getElementById('jobs-tbody');
+  tbody.innerHTML=jobs.map(j=>{
+    const dur=j.started_at&&j.finished_at?Math.round((new Date(j.finished_at)-new Date(j.started_at))/1000)+'s':'—';
+    const statusTag={done:'tag-green',running:'tag-blue',failed:'tag-red',partial:'tag-amber',pending:''}[j.status]||'';
+    return `<tr>
+      <td><span style="font-family:var(--font-mono);font-size:11px;color:var(--dim)">${j.uuid}</span></td>
+      <td><span class="tag ${statusTag}">${j.status}</span></td>
+      <td style="font-family:var(--font-mono);font-size:11px">${j.zip_codes.slice(0,2).join(', ')}${j.zip_codes.length>2?' +'+( j.zip_codes.length-2):''}</td>
+      <td style="font-family:var(--font-mono);font-size:11px;color:var(--dim)">${j.adapters.join(', ')}</td>
+      <td style="font-family:var(--font-mono);font-size:13px">${j.total_found.toLocaleString()}</td>
+      <td style="font-family:var(--font-mono);font-size:13px;color:#4ade80">${j.total_new.toLocaleString()}</td>
+      <td style="font-family:var(--font-mono);font-size:11px;color:var(--dim)">${fmtDate(j.created_at)}</td>
+      <td style="font-family:var(--font-mono);font-size:11px;color:var(--dim)">${dur}</td>
+      <td><a href="job.html" class="btn btn-ghost" style="padding:5px 10px;font-size:10px">View</a></td>
+    </tr>`;
+  }).join('');
+}
+renderJobs();
+
+// charts
+function renderMakesChart(){
+  const counts={};
+  MOCK.listings.forEach(l=>{counts[l.make]=(counts[l.make]||0)+1;});
+  const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const max=sorted[0][1];
+  document.getElementById('makes-chart').innerHTML=sorted.map(([make,cnt])=>`
+    <div class="bar-row">
+      <div class="bar-name">${make}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.round(cnt/max*100)}%"></div></div>
+      <div class="bar-val">${cnt}</div>
+    </div>`).join('');
+}
+
+function renderSourceChart(){
+  const counts={cars_com:0,cargurus:0};
+  MOCK.listings.forEach(l=>{counts[l.source]=(counts[l.source]||0)+1;});
+  const total=MOCK.listings.length;
+  const colors={cars_com:'#5b8fff',cargurus:var_accent()};
+  document.getElementById('source-chart').innerHTML=Object.entries(counts).map(([src,cnt])=>`
+    <div class="pie-row">
+      <div class="pie-dot" style="background:${src==='cars_com'?'#5b8fff':getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()}"></div>
+      <div class="pie-label">${src==='cars_com'?'Cars.com':'CarGurus'}</div>
+      <div class="pie-val">${cnt.toLocaleString()}</div>
+      <div class="pie-pct">${Math.round(cnt/total*100)}%</div>
+    </div>`).join('');
+
+  const statCounts={done:0,running:0,failed:0,partial:0};
+  MOCK.jobs.forEach(j=>{statCounts[j.status]=(statCounts[j.status]||0)+1;});
+  const sc={'done':'#4ade80','running':'#60a5fa','failed':'#f87171','partial':getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()};
+  document.getElementById('status-chart').innerHTML=Object.entries(statCounts).map(([s,c])=>`
+    <div class="pie-row">
+      <div class="pie-dot" style="background:${sc[s]}"></div>
+      <div class="pie-label">${s}</div>
+      <div class="pie-val">${c}</div>
+      <div class="pie-pct">${Math.round(c/MOCK.jobs.length*100)}%</div>
+    </div>`).join('');
+}
+function var_accent(){return getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();}
+renderMakesChart();
+renderSourceChart();
+
+function refreshHealth(){location.reload();}
+
+function openModal(){document.getElementById('modal').classList.add('open');}
+function closeModal(){document.getElementById('modal').classList.remove('open');}
+function submitJob(){
+  closeModal();
+  setTimeout(()=>{window.location.href='job.html';},200);
+}
+
+window.addEventListener('scroll',()=>{
+  document.getElementById('scrolltop').classList.toggle('visible',window.scrollY>300);
+});
+</script>
+</body>
+</html>

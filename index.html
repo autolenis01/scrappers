@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>AutoScrape — Vehicle Intelligence Platform</title>
+<link rel="stylesheet" href="_shared.css"/>
+<style>
+/* ── HERO ── */
+.hero {
+  min-height: calc(100vh - var(--nav-h));
+  display: grid;
+  grid-template-columns: 1fr 480px;
+  border-bottom: 1px solid var(--border);
+}
+.hero-left {
+  padding: 80px 60px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-right: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+.hero-bg-text {
+  position: absolute;
+  bottom: -60px; right: -20px;
+  font-family: var(--font-display);
+  font-size: 280px;
+  font-weight: 800;
+  color: var(--border);
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+  letter-spacing: -0.04em;
+}
+.hero-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 28px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.hero-label::before { content:''; width:24px; height:1px; background:var(--accent); }
+.hero-h1 {
+  font-family: var(--font-display);
+  font-size: clamp(52px, 6vw, 88px);
+  font-weight: 800;
+  line-height: 0.96;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin-bottom: 32px;
+}
+.hero-h1 em {
+  font-style: italic;
+  font-family: var(--font-serif);
+  font-weight: 300;
+  color: var(--accent);
+}
+.hero-p {
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--dim);
+  max-width: 480px;
+  margin-bottom: 48px;
+}
+.hero-actions { display:flex; gap:12px; flex-wrap:wrap; }
+.hero-right {
+  background: var(--bg2);
+  display: flex;
+  flex-direction: column;
+  padding: 48px 40px;
+  overflow-y: auto;
+}
+.form-section { margin-bottom: 28px; }
+.form-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.form-group { margin-bottom: 16px; }
+.form-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: block;
+  margin-bottom: 6px;
+}
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.adapter-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.adapter-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border2);
+  cursor: pointer;
+  transition: all var(--transition);
+  background: var(--bg);
+  user-select: none;
+}
+.adapter-chip:hover { border-color: var(--muted); }
+.adapter-chip.on { border-color: var(--accent); background: var(--accent-dim); }
+.adapter-chip-dot { width:7px; height:7px; border-radius:50%; border:1px solid var(--muted); transition:all var(--transition); flex-shrink:0; }
+.adapter-chip.on .adapter-chip-dot { background:var(--accent); border-color:var(--accent); box-shadow:0 0 6px var(--accent); }
+.adapter-chip-name { font-family:var(--font-mono); font-size:11px; color:var(--text2); }
+.run-btn {
+  width: 100%;
+  padding: 14px;
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.run-btn:hover { background: #e8be5c; }
+.run-btn:disabled { background: var(--muted); cursor: not-allowed; }
+.run-status {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--dim);
+  text-align: center;
+  margin-top: 10px;
+  min-height: 20px;
+  transition: color var(--transition);
+}
+
+/* ── TICKER ── */
+.ticker {
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+  background: var(--bg2);
+  padding: 12px 0;
+}
+.ticker-inner { display:flex; animation: scroll-left 40s linear infinite; white-space:nowrap; }
+.ticker-item {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--dim);
+  padding: 0 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.ticker-sep { color:var(--accent); }
+@keyframes scroll-left { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+
+/* ── KPI STRIP ── */
+.kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-bottom: 1px solid var(--border);
+}
+.kpi-cell {
+  padding: 40px 32px;
+  border-right: 1px solid var(--border);
+  position: relative;
+}
+.kpi-cell:last-child { border-right: none; }
+.kpi-num {
+  font-family: var(--font-display);
+  font-size: 52px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.kpi-num sup { font-size: 22px; color: var(--accent); vertical-align: super; }
+.kpi-label { font-family:var(--font-mono); font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--dim); }
+
+/* ── FEATURE BAND ── */
+.feat-band {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  border-bottom: 1px solid var(--border);
+}
+.feat-side {
+  padding: 60px 32px;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.feat-side-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.feat-side-num {
+  font-family: var(--font-display);
+  font-size: 100px;
+  font-weight: 800;
+  color: var(--border2);
+  line-height: 1;
+}
+.feat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: auto auto;
+}
+.feat-cell {
+  padding: 40px 32px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  transition: background var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+.feat-cell:nth-child(3n) { border-right: none; }
+.feat-cell:nth-child(n+4) { border-bottom: none; }
+.feat-cell:hover { background: var(--bg2); }
+.feat-cell::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0;
+  width: 0;
+  height: 1px;
+  background: var(--accent);
+  transition: width 0.4s ease;
+}
+.feat-cell:hover::after { width: 100%; }
+.feat-icon { font-size: 20px; margin-bottom: 16px; display:block; }
+.feat-name {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+.feat-desc { font-size: 13px; line-height: 1.65; color: var(--dim); }
+
+/* ── HOW IT WORKS ── */
+.how-section { padding: 0; border-bottom: 1px solid var(--border); }
+.how-header {
+  padding: 60px 60px 40px;
+  display: flex;
+  align-items: baseline;
+  gap: 40px;
+  border-bottom: 1px solid var(--border);
+}
+.how-title {
+  font-family: var(--font-display);
+  font-size: 48px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.how-desc { font-size:14px; color:var(--dim); max-width:400px; line-height:1.7; }
+.how-steps { display:grid; grid-template-columns:repeat(4,1fr); }
+.how-step {
+  padding: 40px 32px;
+  border-right: 1px solid var(--border);
+  position: relative;
+}
+.how-step:last-child { border-right: none; }
+.how-step-n {
+  font-family: var(--font-display);
+  font-size: 72px;
+  font-weight: 800;
+  color: var(--border2);
+  line-height: 1;
+  margin-bottom: 16px;
+}
+.how-step-tag {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: var(--accent-dim);
+  border: 1px solid rgba(212,168,67,0.25);
+  padding: 3px 8px;
+  display: inline-block;
+  margin-bottom: 14px;
+}
+.how-step-name {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+.how-step-desc { font-size:13px; color:var(--dim); line-height:1.65; }
+
+/* ── TERMINAL ── */
+.terminal-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-bottom: 1px solid var(--border);
+}
+.terminal-copy {
+  padding: 60px;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.terminal-copy h2 {
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin-bottom: 20px;
+}
+.terminal-copy h2 em { font-family:var(--font-serif); font-style:italic; font-weight:300; color:var(--accent); }
+.terminal-copy p { font-size:14px; color:var(--dim); line-height:1.75; margin-bottom:32px; }
+.terminal-panel { padding: 32px; background: var(--bg); display:flex; flex-direction:column; }
+.term-win {
+  background: #050504;
+  border: 1px solid var(--border2);
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.term-bar {
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.term-dot { width:10px; height:10px; border-radius:50%; }
+.term-body { padding: 20px; font-family:var(--font-mono); font-size:11.5px; line-height:1.9; overflow-y:auto; flex:1; }
+.tl { display:flex; gap:12px; }
+.tt { color:var(--muted); flex-shrink:0; }
+.ti { color:#5b8fff; }
+.tok { color:#4ade80; }
+.tw { color:#fbbf24; }
+.tm { color:#b0b0a0; }
+.tk { color:var(--accent); }
+.tv { color:#f9a8d4; }
+.tcur { display:inline-block; width:7px; height:13px; background:var(--accent); animation:blink 1s step-end infinite; vertical-align:middle; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="index.html" class="nav-logo">Auto<span>Scrape</span></a>
+  <ul class="nav-links">
+    <li><a href="index.html" class="active">Home</a></li>
+    <li><a href="dashboard.html">Dashboard</a></li>
+    <li><a href="results.html">Results</a></li>
+    <li><a href="dealers.html">Dealers</a></li>
+    <li><a href="docs.html">API Docs</a></li>
+  </ul>
+  <div class="nav-right">
+    <div class="live-indicator"><div class="live-dot"></div><span>System Live</span></div>
+    <a href="dashboard.html" class="nav-pill">Admin →</a>
+  </div>
+</nav>
+
+<div class="page">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-left">
+      <div class="hero-bg-text">AUTO</div>
+      <p class="hero-label anim-1">Vehicle Intelligence Platform</p>
+      <h1 class="hero-h1 anim-2">Find Every<br><em>Deal.</em><br>Anywhere.</h1>
+      <p class="hero-p anim-3">ZIP-code targeted scraping across Cars.com and CarGurus. PostgreSQL-backed, Celery-powered, fully normalized output with dealer deduplication and VIN verification.</p>
+      <div class="hero-actions anim-4">
+        <a href="results.html" class="btn btn-primary">Browse Results →</a>
+        <a href="dashboard.html" class="btn">Admin Dashboard</a>
+        <a href="docs.html" class="btn btn-ghost">API Docs</a>
+      </div>
+    </div>
+
+    <div class="hero-right">
+      <div class="form-title">Quick Scrape</div>
+
+      <div class="form-section">
+        <div class="form-group">
+          <label class="form-label">ZIP Codes (comma-separated)</label>
+          <input class="inp" id="f-zips" value="75201, 75034, 75093" placeholder="75201, 75034…"/>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Radius (miles)</label>
+            <input class="inp" id="f-radius" type="number" value="50" min="10" max="500"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Pages / Adapter</label>
+            <input class="inp" id="f-pages" type="number" value="3" min="1" max="20"/>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-title">Adapters</div>
+        <div class="adapter-grid">
+          <div class="adapter-chip on" id="chip-cars" onclick="toggleChip(this)">
+            <div class="adapter-chip-dot"></div>
+            <span class="adapter-chip-name">cars.com</span>
+          </div>
+          <div class="adapter-chip on" id="chip-cg" onclick="toggleChip(this)">
+            <div class="adapter-chip-dot"></div>
+            <span class="adapter-chip-name">CarGurus</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-title">Options</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <label style="display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:11px;color:var(--dim);cursor:pointer">
+            <input type="checkbox" id="opt-robots" checked style="accent-color:var(--accent)"/>
+            Respect robots.txt
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:11px;color:var(--dim);cursor:pointer">
+            <input type="checkbox" id="opt-headless" checked style="accent-color:var(--accent)"/>
+            Headless browser mode
+          </label>
+        </div>
+      </div>
+
+      <button class="run-btn" id="run-btn" onclick="doRun()">▶ &nbsp;Enqueue Scrape Job</button>
+      <div class="run-status" id="run-status">Ready</div>
+    </div>
+  </section>
+
+  <!-- TICKER -->
+  <div class="ticker">
+    <div class="ticker-inner" id="ticker"></div>
+  </div>
+
+  <!-- KPI STRIP -->
+  <div class="kpi-strip">
+    <div class="kpi-cell">
+      <div class="kpi-num"><span id="k1">0</span></div>
+      <div class="kpi-label">Listings Indexed</div>
+    </div>
+    <div class="kpi-cell">
+      <div class="kpi-num"><span id="k2">0</span></div>
+      <div class="kpi-label">Dealers Mapped</div>
+    </div>
+    <div class="kpi-cell">
+      <div class="kpi-num"><span id="k3">0</span><sup>%</sup></div>
+      <div class="kpi-label">Dedup Rate</div>
+    </div>
+    <div class="kpi-cell">
+      <div class="kpi-num"><span id="k4">0</span></div>
+      <div class="kpi-label">Jobs Completed</div>
+    </div>
+  </div>
+
+  <!-- FEATURES -->
+  <div class="feat-band">
+    <div class="feat-side">
+      <span class="feat-side-label">Platform Capabilities</span>
+      <span class="feat-side-num">06</span>
+    </div>
+    <div class="feat-grid">
+      <div class="feat-cell"><span class="feat-icon">⚡</span><div class="feat-name">Async Dual-Mode Scraping</div><div class="feat-desc">HTTPX for static pages, headless Playwright for JS-rendered sites. Adapter-per-site architecture.</div></div>
+      <div class="feat-cell"><span class="feat-icon">🗄</span><div class="feat-name">PostgreSQL Persistence</div><div class="feat-desc">Full relational schema with Alembic migrations. Upsert logic tracks new vs. previously seen listings.</div></div>
+      <div class="feat-cell"><span class="feat-icon">🔄</span><div class="feat-name">Celery Job Queue</div><div class="feat-desc">Redis-backed background workers. Beat scheduler runs adapter health checks every 15 minutes.</div></div>
+      <div class="feat-cell"><span class="feat-icon">🏪</span><div class="feat-name">Dealer Deduplication</div><div class="feat-desc">Dealers matched by name + phone + ZIP. VINs normalized to 17-char uppercase for cross-source identity.</div></div>
+      <div class="feat-cell"><span class="feat-icon">📡</span><div class="feat-name">Proxy Rotation</div><div class="feat-desc">Round-robin proxy pool with per-domain crawl delays and exponential backoff on 429 / 503 responses.</div></div>
+      <div class="feat-cell"><span class="feat-icon">📤</span><div class="feat-name">Filtered Export</div><div class="feat-desc">Streamed CSV and JSON export with ZIP, make, source, price and mileage filters. Bulk ZIP CSV import.</div></div>
+    </div>
+  </div>
+
+  <!-- HOW IT WORKS -->
+  <div class="how-section">
+    <div class="how-header">
+      <h2 class="how-title">How It Works</h2>
+      <p class="how-desc">From ZIP code input to structured dealer data in four clean, auditable steps. Every layer is independently swappable.</p>
+    </div>
+    <div class="how-steps">
+      <div class="how-step"><div class="how-step-n">01</div><div class="how-step-tag">Input</div><div class="how-step-name">ZIP + Config</div><div class="how-step-desc">Submit ZIPs, radius, and adapter selection via the API or admin UI. Bulk import supports CSV upload.</div></div>
+      <div class="how-step"><div class="how-step-n">02</div><div class="how-step-tag">Queue</div><div class="how-step-name">Celery Task</div><div class="how-step-desc">Job enqueued in Redis. Workers pick it up immediately, running each adapter per ZIP with polite crawl delays.</div></div>
+      <div class="how-step"><div class="how-step-n">03</div><div class="how-step-tag">Parse</div><div class="how-step-name">Adapt + Normalize</div><div class="how-step-desc">Site adapter fetches pages, extracts listings, normalizes price, mileage, VIN, and dealer fields into a unified schema.</div></div>
+      <div class="how-step"><div class="how-step-n">04</div><div class="how-step-tag">Output</div><div class="how-step-name">Store + Export</div><div class="how-step-desc">Results upserted to Postgres. Browse via admin UI, filter by make / ZIP, or stream as CSV / JSON export.</div></div>
+    </div>
+  </div>
+
+  <!-- TERMINAL -->
+  <div class="terminal-section">
+    <div class="terminal-copy">
+      <h2>Real-Time<br><em>Structured</em><br>Logging</h2>
+      <p>structlog-powered JSON logs give full visibility into every scrape run — adapter hits, parse failures, deduplication stats, retry counts, and per-page timing.</p>
+      <a href="results.html" class="btn btn-primary" style="align-self:flex-start">View Live Results →</a>
+    </div>
+    <div class="terminal-panel">
+      <div class="term-win">
+        <div class="term-bar">
+          <div class="term-dot" style="background:#ff5f57"></div>
+          <div class="term-dot" style="background:#febc2e"></div>
+          <div class="term-dot" style="background:#28c840"></div>
+          <span style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-left:10px">celery@worker-1 — queue: scrape</span>
+        </div>
+        <div class="term-body" id="term-body">
+          <div class="tl"><span class="tt">09:14:01</span><span class="ti">INFO</span><span class="tm">task.received <span class="tk">job_id</span>=<span class="tv">a3f2c8d1</span></span></div>
+          <div class="tl"><span class="tt">09:14:02</span><span class="ti">INFO</span><span class="tm">cars_com.fetch <span class="tk">zip</span>=<span class="tv">75201</span> <span class="tk">page</span>=<span class="tv">1</span> <span class="tk">proxy</span>=<span class="tv">pool-03</span></span></div>
+          <div class="tl"><span class="tt">09:14:04</span><span class="tok">OK  </span><span class="tm">cars_com.page_done <span class="tk">count</span>=<span class="tv">24</span> <span class="tk">new</span>=<span class="tv">22</span> <span class="tk">ms</span>=<span class="tv">1840</span></span></div>
+          <div class="tl"><span class="tt">09:14:06</span><span class="tok">OK  </span><span class="tm">cars_com.page_done <span class="tk">count</span>=<span class="tv">24</span> <span class="tk">new</span>=<span class="tv">19</span> <span class="tk">ms</span>=<span class="tv">2110</span></span></div>
+          <div class="tl"><span class="tt">09:14:08</span><span class="tok">OK  </span><span class="tm">cars_com.done <span class="tk">total</span>=<span class="tv">48</span> <span class="tk">zip</span>=<span class="tv">75201</span></span></div>
+          <div class="tl"><span class="tt">09:14:11</span><span class="ti">INFO</span><span class="tm">cargurus.navigate <span class="tk">zip</span>=<span class="tv">75201</span> <span class="tk">page</span>=<span class="tv">1</span></span></div>
+          <div class="tl"><span class="tt">09:14:14</span><span class="tok">OK  </span><span class="tm">cargurus.page_done <span class="tk">count</span>=<span class="tv">20</span> <span class="tk">new</span>=<span class="tv">18</span></span></div>
+          <div class="tl"><span class="tt">09:14:17</span><span class="tw">WARN</span><span class="tm">cargurus.selector_miss <span class="tk">card</span>=<span class="tv">3</span> <span class="tk">field</span>=<span class="tv">dealer_phone</span></span></div>
+          <div class="tl"><span class="tt">09:14:20</span><span class="tok">OK  </span><span class="tm">cargurus.done <span class="tk">total</span>=<span class="tv">57</span></span></div>
+          <div class="tl"><span class="tt">09:14:20</span><span class="tok">OK  </span><span class="tm">task.done <span class="tk">found</span>=<span class="tv">105</span> <span class="tk">new</span>=<span class="tv">98</span> <span class="tk">dupes</span>=<span class="tv">7</span> <span class="tk">status</span>=<span class="tv">done</span></span></div>
+          <div class="tl"><span class="tt">09:14:21</span><span class="ti">INFO</span><span class="tm">worker.idle <span class="tk">queue</span>=<span class="tv">scrape</span> <span class="tcur"></span></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="footer-brand">Auto<span>Scrape</span> v2.0</div>
+    <ul class="footer-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="dashboard.html">Dashboard</a></li>
+      <li><a href="results.html">Results</a></li>
+      <li><a href="dealers.html">Dealers</a></li>
+      <li><a href="docs.html">API Docs</a></li>
+    </ul>
+    <div class="footer-copy">For research use · Respect robots.txt · Review ToS per site</div>
+  </footer>
+
+</div>
+
+<button id="scrolltop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+<script src="_data.js"></script>
+<script>
+// scroll top
+window.addEventListener('scroll',()=>{
+  document.getElementById('scrolltop').classList.toggle('visible',window.scrollY>400);
+});
+
+// adapter toggle
+function toggleChip(el){ el.classList.toggle('on'); }
+
+// animated counters
+function animCount(id,target,fmt){
+  const el=document.getElementById(id);
+  const dur=1800; let start=0;
+  const step=ts=>{
+    if(!start)start=ts;
+    const p=Math.min((ts-start)/dur,1);
+    const e=1-Math.pow(1-p,3);
+    el.textContent=(fmt?fmt(Math.floor(e*target)):Math.floor(e*target).toLocaleString());
+    if(p<1)requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+const kpiObs=new IntersectionObserver(entries=>{
+  if(entries[0].isIntersecting){
+    animCount('k1',12847);
+    animCount('k2',1203);
+    animCount('k3',94,n=>n);
+    animCount('k4',318);
+    kpiObs.disconnect();
+  }
+},{threshold:0.3});
+kpiObs.observe(document.querySelector('.kpi-strip'));
+
+// ticker
+const items=['2024 Toyota RAV4 · $29,400 · 11k mi','2023 Ford F-150 · $38,500 · 31k mi','2022 Honda Accord · $24,200 · 28k mi','2024 Chevrolet Silverado · $45,000 · 8k mi','2021 BMW X3 · $34,800 · 42k mi','2023 Hyundai Tucson · $26,400 · 12k mi','2022 Tesla Model Y · $39,900 · 18k mi','2021 Nissan Rogue · $22,500 · 38k mi','2023 Jeep Grand Cherokee · $41,200 · 15k mi','2020 Audi Q5 · $31,600 · 47k mi'];
+const t=document.getElementById('ticker');
+const dbl=[...items,...items];
+t.innerHTML=dbl.map(x=>`<span class="ticker-item"><span class="ticker-sep">◆</span>${x}</span>`).join('');
+
+// run simulation
+function doRun(){
+  const zips=document.getElementById('f-zips').value.trim();
+  if(!zips){document.getElementById('run-status').textContent='⚠ Enter at least one ZIP code';document.getElementById('run-status').style.color='#f87171';return;}
+  const btn=document.getElementById('run-btn');
+  const status=document.getElementById('run-status');
+  btn.disabled=true;
+  const steps=[
+    {t:'Validating ZIPs…',c:'var(--dim)'},
+    {t:'Connecting to Celery broker…',c:'var(--dim)'},
+    {t:'Job enqueued ✓',c:'var(--accent)'},
+    {t:'Workers picked up task…',c:'#60a5fa'},
+    {t:'Scraping in progress…',c:'#60a5fa'},
+    {t:'Done — redirecting to results…',c:'#4ade80'},
+  ];
+  let i=0;
+  const iv=setInterval(()=>{
+    status.textContent=steps[i].t;
+    status.style.color=steps[i].c;
+    i++;
+    if(i>=steps.length){clearInterval(iv);setTimeout(()=>{window.location.href='results.html';},500);}
+  },600);
+}
+</script>
+</body>
+</html>

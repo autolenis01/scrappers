@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>API Docs — AutoScrape</title>
+<link rel="stylesheet" href="_shared.css"/>
+<style>
+.docs-layout { display:grid; grid-template-columns:240px 1fr; min-height:calc(100vh - var(--nav-h)); }
+.docs-sidebar {
+  border-right:1px solid var(--border); background:var(--bg2);
+  position:sticky; top:var(--nav-h); height:calc(100vh - var(--nav-h));
+  overflow-y:auto; padding:24px 0;
+}
+.docs-nav-section { margin-bottom:20px; }
+.docs-nav-label { font-family:var(--font-mono); font-size:9px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); padding:0 20px 8px; display:block; }
+.docs-nav-link { display:flex; align-items:center; gap:8px; padding:7px 20px; font-family:var(--font-mono); font-size:11px; color:var(--dim); text-decoration:none; transition:all var(--transition); border-left:2px solid transparent; }
+.docs-nav-link:hover { color:var(--text); background:var(--bg3); }
+.docs-nav-link.active { color:var(--accent); background:var(--accent-glow); border-left-color:var(--accent); }
+.method { font-size:9px; font-weight:700; letter-spacing:.06em; padding:2px 5px; }
+.m-post { background:rgba(39,174,96,.18); color:#4ade80; }
+.m-get  { background:rgba(41,128,185,.18); color:#60a5fa; }
+
+.docs-content { padding:0; }
+.docs-section { padding:48px 56px; border-bottom:1px solid var(--border); scroll-margin-top:calc(var(--nav-h) + 20px); }
+.docs-section:last-child { border-bottom:none; }
+
+.docs-h1 { font-family:var(--font-display); font-size:40px; font-weight:700; letter-spacing:-.02em; margin-bottom:16px; }
+.docs-h2 { font-family:var(--font-display); font-size:26px; font-weight:700; margin-bottom:20px; display:flex; align-items:center; gap:14px; }
+.docs-h3 { font-family:var(--font-display); font-size:18px; font-weight:600; margin-bottom:14px; margin-top:32px; }
+.docs-p  { font-size:14px; line-height:1.8; color:var(--dim); margin-bottom:16px; }
+.docs-p a { color:var(--accent); text-decoration:none; }
+.docs-p a:hover { text-decoration:underline; }
+
+/* ENDPOINT CARD */
+.endpoint {
+  border:1px solid var(--border2); margin-bottom:24px; overflow:hidden;
+}
+.endpoint-head {
+  display:flex; align-items:center; gap:12px;
+  padding:14px 20px; background:var(--bg2); border-bottom:1px solid var(--border);
+  cursor:pointer; transition:background var(--transition);
+}
+.endpoint-head:hover { background:var(--bg3); }
+.endpoint-path { font-family:var(--font-mono); font-size:13px; font-weight:500; color:var(--text); }
+.endpoint-desc { font-family:var(--font-mono); font-size:11px; color:var(--dim); margin-left:auto; }
+.endpoint-body { padding:20px; display:none; }
+.endpoint-body.open { display:block; }
+.endpoint-toggle { color:var(--muted); font-size:12px; margin-left:auto; transition:transform var(--transition); }
+.endpoint-head.open .endpoint-toggle { transform:rotate(180deg); }
+
+/* CODE BLOCK */
+.code-block {
+  background:#050504; border:1px solid var(--border2);
+  font-family:var(--font-mono); font-size:12px; line-height:1.8;
+  padding:20px; overflow-x:auto; position:relative; margin-bottom:16px;
+}
+.code-block pre { margin:0; white-space:pre; }
+.code-lang { position:absolute; top:8px; right:12px; font-family:var(--font-mono); font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+.copy-btn {
+  position:absolute; top:8px; right:60px;
+  font-family:var(--font-mono); font-size:9px; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--dim); background:none; border:1px solid var(--border2); padding:3px 8px; cursor:pointer;
+  transition:all var(--transition);
+}
+.copy-btn:hover { color:var(--accent); border-color:var(--accent); }
+
+.param-table { width:100%; border-collapse:collapse; margin-bottom:16px; }
+.param-table th { font-family:var(--font-mono); font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); padding:8px 12px; text-align:left; border-bottom:1px solid var(--border2); }
+.param-table td { font-family:var(--font-mono); font-size:12px; padding:9px 12px; border-bottom:1px solid var(--border); vertical-align:top; }
+.param-name { color:var(--accent); }
+.param-type { color:#60a5fa; }
+.param-req  { color:#f87171; }
+.param-opt  { color:var(--muted); }
+.param-desc { color:var(--dim); line-height:1.6; }
+
+/* INTRO CARDS */
+.intro-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--border); margin-top:32px; }
+.intro-card { background:var(--bg2); padding:24px; }
+.intro-card-n { font-family:var(--font-display); font-size:14px; font-weight:600; margin-bottom:8px; }
+.intro-card-v { font-family:var(--font-mono); font-size:12px; color:var(--dim); line-height:1.65; }
+
+.auth-banner {
+  background:var(--accent-dim); border:1px solid rgba(212,168,67,.3);
+  padding:16px 20px; display:flex; align-items:center; gap:12px;
+  font-family:var(--font-mono); font-size:12px; color:var(--text2); margin-bottom:24px;
+}
+.auth-banner-icon { font-size:16px; flex-shrink:0; }
+
+.response-tabs { display:flex; gap:0; margin-bottom:0; border-bottom:1px solid var(--border2); }
+.rtab { font-family:var(--font-mono); font-size:10px; letter-spacing:.06em; padding:7px 14px; background:none; border:none; border-bottom:2px solid transparent; color:var(--dim); cursor:pointer; transition:all var(--transition); }
+.rtab.on { color:var(--accent); border-bottom-color:var(--accent); }
+
+/* HIGHLIGHT */
+.hl-key   { color:var(--accent); }
+.hl-str   { color:#a8e6a3; }
+.hl-num   { color:#f9a8d4; }
+.hl-kw    { color:#60a5fa; }
+.hl-cmt   { color:var(--muted); font-style:italic; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="index.html" class="nav-logo">Auto<span>Scrape</span></a>
+  <ul class="nav-links">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="dashboard.html">Dashboard</a></li>
+    <li><a href="results.html">Results</a></li>
+    <li><a href="dealers.html">Dealers</a></li>
+    <li><a href="docs.html" class="active">API Docs</a></li>
+  </ul>
+  <div class="nav-right">
+    <span class="tag tag-green">v2.0.0</span>
+    <a href="index.html" class="nav-pill cta">Launch App →</a>
+  </div>
+</nav>
+
+<div class="page">
+<div class="docs-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="docs-sidebar">
+    <div class="docs-nav-section">
+      <span class="docs-nav-label">Getting Started</span>
+      <a class="docs-nav-link active" href="#intro">Introduction</a>
+      <a class="docs-nav-link" href="#auth">Authentication</a>
+      <a class="docs-nav-link" href="#errors">Error Codes</a>
+    </div>
+    <div class="docs-nav-section">
+      <span class="docs-nav-label">Scraping</span>
+      <a class="docs-nav-link" href="#scrape-create"><span class="method m-post">POST</span> Enqueue Job</a>
+      <a class="docs-nav-link" href="#scrape-list"><span class="method m-get">GET</span> List Jobs</a>
+      <a class="docs-nav-link" href="#scrape-get"><span class="method m-get">GET</span> Get Job</a>
+    </div>
+    <div class="docs-nav-section">
+      <span class="docs-nav-label">Listings</span>
+      <a class="docs-nav-link" href="#list-browse"><span class="method m-get">GET</span> Browse</a>
+      <a class="docs-nav-link" href="#list-csv"><span class="method m-get">GET</span> Export CSV</a>
+      <a class="docs-nav-link" href="#list-json"><span class="method m-get">GET</span> Export JSON</a>
+    </div>
+    <div class="docs-nav-section">
+      <span class="docs-nav-label">Admin</span>
+      <a class="docs-nav-link" href="#admin-stats"><span class="method m-get">GET</span> Stats</a>
+      <a class="docs-nav-link" href="#admin-health"><span class="method m-get">GET</span> Health</a>
+      <a class="docs-nav-link" href="#admin-import-csv"><span class="method m-post">POST</span> Import CSV</a>
+      <a class="docs-nav-link" href="#admin-import-zips"><span class="method m-post">POST</span> Import ZIPs</a>
+    </div>
+    <div class="docs-nav-section">
+      <span class="docs-nav-label">Reference</span>
+      <a class="docs-nav-link" href="#schemas">Schemas</a>
+      <a class="docs-nav-link" href="#adapters">Adapters</a>
+    </div>
+  </aside>
+
+  <!-- CONTENT -->
+  <main class="docs-content">
+
+    <!-- INTRO -->
+    <div class="docs-section" id="intro">
+      <h1 class="docs-h1">API Reference</h1>
+      <p class="docs-p">AutoScrape provides a REST API for ZIP-code-targeted vehicle listing scraping across Cars.com and CarGurus. All endpoints return JSON. All write operations require authentication.</p>
+      <div class="intro-grid">
+        <div class="intro-card"><div class="intro-card-n">Base URL</div><div class="intro-card-v">http://localhost:8000<br><span style="color:var(--muted)">or your deployed host</span></div></div>
+        <div class="intro-card"><div class="intro-card-n">Format</div><div class="intro-card-v">JSON request / response<br>multipart/form-data for CSV upload</div></div>
+        <div class="intro-card"><div class="intro-card-n">Interactive</div><div class="intro-card-v"><a href="http://localhost:8000/docs" style="color:var(--accent)">localhost:8000/docs</a><br>Swagger UI (FastAPI)</div></div>
+      </div>
+    </div>
+
+    <!-- AUTH -->
+    <div class="docs-section" id="auth">
+      <h2 class="docs-h2">Authentication</h2>
+      <div class="auth-banner"><span class="auth-banner-icon">🔑</span>All endpoints require an <code style="color:var(--accent)">X-API-Key</code> header. Set your key in <code>.env</code> as <code>API_KEY=your-key-here</code>.</div>
+      <div class="code-block">
+        <span class="code-lang">bash</span>
+        <button class="copy-btn" onclick="copyCode(this)">copy</button>
+<pre><span class="hl-cmt"># Pass the header on every request</span>
+curl -H <span class="hl-str">"X-API-Key: your-key-here"</span> http://localhost:8000/listings/</pre>
+      </div>
+      <p class="docs-p">Missing or invalid key returns <code>403 Forbidden</code>. The API key is validated in <code>app/core/security.py</code> and can be rotated by updating the <code>API_KEY</code> env var and restarting the server.</p>
+    </div>
+
+    <!-- ERRORS -->
+    <div class="docs-section" id="errors">
+      <h2 class="docs-h2">Error Codes</h2>
+      <table class="param-table">
+        <thead><tr><th>Code</th><th>Meaning</th><th>Common Cause</th></tr></thead>
+        <tbody>
+          <tr><td class="param-name">400</td><td>Bad Request</td><td class="param-desc">Invalid adapter name, malformed ZIP, missing required field</td></tr>
+          <tr><td class="param-name">403</td><td>Forbidden</td><td class="param-desc">Missing or invalid X-API-Key header</td></tr>
+          <tr><td class="param-name">404</td><td>Not Found</td><td class="param-desc">Job ID does not exist</td></tr>
+          <tr><td class="param-name">422</td><td>Validation Error</td><td class="param-desc">Pydantic schema validation failed — check the error detail</td></tr>
+          <tr><td class="param-name">500</td><td>Server Error</td><td class="param-desc">Unhandled exception — check server logs</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SCRAPE CREATE -->
+    <div class="docs-section" id="scrape-create">
+      <h2 class="docs-h2"><span class="tag m-post" style="font-size:12px;padding:4px 10px">POST</span>/scrape/</h2>
+      <p class="docs-p">Enqueue a scrape job. Returns immediately with a <code>job_id</code>. The job runs asynchronously via Celery. Poll <code>GET /scrape/jobs/{job_id}</code> for progress.</p>
+      <h3 class="docs-h3">Request Body</h3>
+      <table class="param-table">
+        <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td class="param-name">zip_codes</td><td class="param-type">string[]</td><td class="param-req">required</td><td class="param-desc">List of 5-digit US ZIP codes to search</td></tr>
+          <tr><td class="param-name">radius_miles</td><td class="param-type">integer</td><td class="param-opt">optional</td><td class="param-desc">Search radius in miles. Default: 50</td></tr>
+          <tr><td class="param-name">adapters</td><td class="param-type">string[]</td><td class="param-opt">optional</td><td class="param-desc">Adapter names. Default: ["cars_com","cargurus"]</td></tr>
+          <tr><td class="param-name">max_pages_per_adapter</td><td class="param-type">integer</td><td class="param-opt">optional</td><td class="param-desc">Pages to scrape per adapter per ZIP. Default: 3</td></tr>
+          <tr><td class="param-name">respect_robots</td><td class="param-type">boolean</td><td class="param-opt">optional</td><td class="param-desc">Honour robots.txt. Default: true</td></tr>
+          <tr><td class="param-name">headless</td><td class="param-type">boolean</td><td class="param-opt">optional</td><td class="param-desc">Run Playwright headless. Default: true</td></tr>
+        </tbody>
+      </table>
+      <div class="code-block">
+        <span class="code-lang">bash</span>
+        <button class="copy-btn" onclick="copyCode(this)">copy</button>
+<pre>curl -X POST http://localhost:8000/scrape/ \
+  -H <span class="hl-str">"X-API-Key: your-key"</span> \
+  -H <span class="hl-str">"Content-Type: application/json"</span> \
+  -d <span class="hl-str">'{
+    "zip_codes": ["75201", "75034"],
+    "radius_miles": 50,
+    "adapters": ["cars_com", "cargurus"],
+    "max_pages_per_adapter": 3
+  }'</span></pre>
+      </div>
+      <h3 class="docs-h3">Response <span style="font-family:var(--font-mono);font-size:12px;color:var(--dim);font-weight:400">202 Accepted</span></h3>
+      <div class="code-block">
+        <span class="code-lang">json</span>
+<pre>{
+  <span class="hl-key">"job_id"</span>: <span class="hl-str">"a3f2c8d1-1234-5678-abcd-ef0123456789"</span>,
+  <span class="hl-key">"status"</span>: <span class="hl-str">"pending"</span>,
+  <span class="hl-key">"message"</span>: <span class="hl-str">"Job enqueued for 2 ZIP(s) × 2 adapter(s)."</span>
+}</pre>
+      </div>
+    </div>
+
+    <!-- SCRAPE LIST -->
+    <div class="docs-section" id="scrape-list">
+      <h2 class="docs-h2"><span class="tag m-get" style="font-size:12px;padding:4px 10px">GET</span>/scrape/jobs</h2>
+      <p class="docs-p">Return a paginated list of all scrape jobs, most recent first.</p>
+      <table class="param-table">
+        <thead><tr><th>Param</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td class="param-name">limit</td><td class="param-type">integer</td><td>50</td><td class="param-desc">Max results to return</td></tr>
+          <tr><td class="param-name">offset</td><td class="param-type">integer</td><td>0</td><td class="param-desc">Pagination offset</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SCRAPE GET -->
+    <div class="docs-section" id="scrape-get">
+      <h2 class="docs-h2"><span class="tag m-get" style="font-size:12px;padding:4px 10px">GET</span>/scrape/jobs/{job_id}</h2>
+      <p class="docs-p">Get the status and results of a specific job by UUID. Poll this endpoint to track progress.</p>
+      <div class="code-block">
+        <span class="code-lang">json</span>
+<pre>{
+  <span class="hl-key">"job_id"</span>:    <span class="hl-str">"a3f2c8d1-…"</span>,
+  <span class="hl-key">"status"</span>:    <span class="hl-str">"done"</span>,  <span class="hl-cmt">// pending | running | done | failed | partial</span>
+  <span class="hl-key">"zip_codes"</span>: [<span class="hl-str">"75201"</span>, <span class="hl-str">"75034"</span>],
+  <span class="hl-key">"adapters"</span>:  [<span class="hl-str">"cars_com"</span>, <span class="hl-str">"cargurus"</span>],
+  <span class="hl-key">"total_found"</span>: <span class="hl-num">105</span>,
+  <span class="hl-key">"total_new"</span>:   <span class="hl-num">98</span>,
+  <span class="hl-key">"created_at"</span>:  <span class="hl-str">"2026-03-18T09:14:00Z"</span>,
+  <span class="hl-key">"started_at"</span>:  <span class="hl-str">"2026-03-18T09:14:01Z"</span>,
+  <span class="hl-key">"finished_at"</span>: <span class="hl-str">"2026-03-18T09:14:21Z"</span>,
+  <span class="hl-key">"error_message"</span>: <span class="hl-kw">null</span>
+}</pre>
+      </div>
+    </div>
+
+    <!-- LISTINGS BROWSE -->
+    <div class="docs-section" id="list-browse">
+      <h2 class="docs-h2"><span class="tag m-get" style="font-size:12px;padding:4px 10px">GET</span>/listings/</h2>
+      <p class="docs-p">Browse all stored listings with optional filters.</p>
+      <table class="param-table">
+        <thead><tr><th>Param</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td class="param-name">zip_code</td><td class="param-type">string</td><td class="param-desc">Filter by exact ZIP code</td></tr>
+          <tr><td class="param-name">make</td><td class="param-type">string</td><td class="param-desc">Case-insensitive partial match on make</td></tr>
+          <tr><td class="param-name">source</td><td class="param-type">string</td><td class="param-desc">Filter by adapter: <code>cars_com</code> or <code>cargurus</code></td></tr>
+          <tr><td class="param-name">limit</td><td class="param-type">integer</td><td class="param-desc">Max results (≤500). Default: 100</td></tr>
+          <tr><td class="param-name">offset</td><td class="param-type">integer</td><td class="param-desc">Pagination offset. Default: 0</td></tr>
+        </tbody>
+      </table>
+      <div class="code-block">
+        <span class="code-lang">bash</span>
+        <button class="copy-btn" onclick="copyCode(this)">copy</button>
+<pre>curl <span class="hl-str">"http://localhost:8000/listings/?zip_code=75201&amp;make=Toyota&amp;limit=50"</span> \
+  -H <span class="hl-str">"X-API-Key: your-key"</span></pre>
+      </div>
+    </div>
+
+    <!-- EXPORT CSV -->
+    <div class="docs-section" id="list-csv">
+      <h2 class="docs-h2"><span class="tag m-get" style="font-size:12px;padding:4px 10px">GET</span>/listings/export/csv</h2>
+      <p class="docs-p">Stream filtered listings as a CSV file download. Accepts the same filter params as <code>GET /listings/</code>. No pagination limit — streams up to 10,000 rows.</p>
+      <div class="code-block">
+        <span class="code-lang">bash</span>
+        <button class="copy-btn" onclick="copyCode(this)">copy</button>
+<pre>curl <span class="hl-str">"http://localhost:8000/listings/export/csv?zip_code=75201"</span> \
+  -H <span class="hl-str">"X-API-Key: your-key"</span> -o listings.csv</pre>
+      </div>
+    </div>
+
+    <!-- EXPORT JSON -->
+    <div class="docs-section" id="list-json">
+      <h2 class="docs-h2"><span class="tag m-get" style="font-size:12px;padding:4px 10px">GET</span>/listings/export/json</h2>
+      <p class="docs-p">Same as CSV export but streams a JSON array. Up to 10,000 records per request.</p>
+    </div>
+
+    <!-- ADMIN STATS -->
+    <div class="docs-section" id="admin-stats">
+      <h2 class="docs-h2"><span class="tag m-get" style="font-size:12px;padding:4px 10px">GET</span>/admin/stats</h2>
+      <p class="docs-p">Dashboard summary counts used by the admin UI.</p>
+      <div class="code-block">
+        <span class="code-lang">json</span>
+<pre>{
+  <span class="hl-key">"total_listings"</span>: <span class="hl-num">12847</span>,
+  <span class="hl-key">"total_dealers"</span>:  <span class="hl-num">1203</span>,
+  <span class="hl-key">"total_jobs"</span>:     <span class="hl-num">318</span>,
+  <span class="hl-key">"running_jobs"</span>:   <span class="hl-num">2</span>,
+  <span class="hl-key">"listings_by_source"</span>: {
+    <span class="hl-key">"cars_com"</span>:  <span class="hl-num">6841</span>,
+    <span class="hl-key">"cargurus"</span>:  <span class="hl-num">6006</span>
+  }
+}</pre>
+      </div>
+    </div>
+
+    <!-- ADMIN HEALTH -->
+    <div class="docs-section" id="admin-health">
+      <h2 class="docs-h2"><span class="tag m-get" style="font-size:12px;padding:4px 10px">GET</span>/admin/health/adapters</h2>
+      <p class="docs-p">Returns the latest health check result per adapter, recorded every 15 minutes by the Celery beat scheduler.</p>
+      <div class="code-block">
+        <span class="code-lang">json</span>
+<pre>[
+  {
+    <span class="hl-key">"adapter"</span>:         <span class="hl-str">"cars_com"</span>,
+    <span class="hl-key">"is_healthy"</span>:      <span class="hl-kw">true</span>,
+    <span class="hl-key">"last_checked"</span>:   <span class="hl-str">"2026-03-18T09:00:00Z"</span>,
+    <span class="hl-key">"response_time_ms"</span>: <span class="hl-num">1840</span>,
+    <span class="hl-key">"last_error"</span>:     <span class="hl-kw">null</span>,
+    <span class="hl-key">"listings_found"</span>: <span class="hl-num">48</span>
+  }
+]</pre>
+      </div>
+    </div>
+
+    <!-- IMPORT CSV -->
+    <div class="docs-section" id="admin-import-csv">
+      <h2 class="docs-h2"><span class="tag m-post" style="font-size:12px;padding:4px 10px">POST</span>/admin/import/csv</h2>
+      <p class="docs-p">Upload a CSV file with a <code>zip_code</code> column (or a plain text file with one ZIP per line). AutoScrape deduplicates the ZIPs and enqueues a single scrape job.</p>
+      <table class="param-table">
+        <thead><tr><th>Form Field</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td class="param-name">file</td><td class="param-type">File</td><td class="param-desc">CSV or TXT file</td></tr>
+          <tr><td class="param-name">radius_miles</td><td class="param-type">integer</td><td class="param-desc">Default: 50</td></tr>
+          <tr><td class="param-name">adapters</td><td class="param-type">string</td><td class="param-desc">Comma-separated. Default: "cars_com,cargurus"</td></tr>
+          <tr><td class="param-name">max_pages_per_adapter</td><td class="param-type">integer</td><td class="param-desc">Default: 3</td></tr>
+        </tbody>
+      </table>
+      <div class="code-block">
+        <span class="code-lang">bash</span>
+        <button class="copy-btn" onclick="copyCode(this)">copy</button>
+<pre>curl -X POST http://localhost:8000/admin/import/csv \
+  -H <span class="hl-str">"X-API-Key: your-key"</span> \
+  -F <span class="hl-str">"file=@zip_codes.csv"</span> \
+  -F <span class="hl-str">"radius_miles=50"</span> \
+  -F <span class="hl-str">"adapters=cars_com,cargurus"</span></pre>
+      </div>
+    </div>
+
+    <!-- IMPORT ZIPS -->
+    <div class="docs-section" id="admin-import-zips">
+      <h2 class="docs-h2"><span class="tag m-post" style="font-size:12px;padding:4px 10px">POST</span>/admin/import/zips</h2>
+      <p class="docs-p">Same as CSV import but accepts a JSON body — useful for programmatic ingestion.</p>
+      <div class="code-block">
+        <span class="code-lang">bash</span>
+        <button class="copy-btn" onclick="copyCode(this)">copy</button>
+<pre>curl -X POST http://localhost:8000/admin/import/zips \
+  -H <span class="hl-str">"X-API-Key: your-key"</span> \
+  -H <span class="hl-str">"Content-Type: application/json"</span> \
+  -d <span class="hl-str">'{"zip_codes":["75201","75034","78201"],"radius_miles":50}'</span></pre>
+      </div>
+    </div>
+
+    <!-- SCHEMAS -->
+    <div class="docs-section" id="schemas">
+      <h2 class="docs-h2">Schemas</h2>
+      <h3 class="docs-h3">VehicleListing</h3>
+      <div class="code-block">
+        <span class="code-lang">json</span>
+<pre>{
+  <span class="hl-key">"id"</span>:           <span class="hl-str">"uuid"</span>,
+  <span class="hl-key">"source"</span>:       <span class="hl-str">"cars_com | cargurus"</span>,
+  <span class="hl-key">"zip_code"</span>:     <span class="hl-str">"75201"</span>,
+  <span class="hl-key">"listing_url"</span>:  <span class="hl-str">"https://…"</span>,
+  <span class="hl-key">"title"</span>:        <span class="hl-str">"2023 Toyota Camry"</span>,
+  <span class="hl-key">"year"</span>:         <span class="hl-num">2023</span>,
+  <span class="hl-key">"make"</span>:         <span class="hl-str">"Toyota"</span>,
+  <span class="hl-key">"model"</span>:        <span class="hl-str">"Camry"</span>,
+  <span class="hl-key">"trim"</span>:         <span class="hl-str">"XLE"</span>,
+  <span class="hl-key">"vin"</span>:          <span class="hl-str">"1HGCM82633A004352"</span>,
+  <span class="hl-key">"price"</span>:        <span class="hl-num">28900</span>,
+  <span class="hl-key">"mileage"</span>:      <span class="hl-num">18420</span>,
+  <span class="hl-key">"condition"</span>:    <span class="hl-str">"used"</span>,
+  <span class="hl-key">"dealer_name"</span>:  <span class="hl-str">"Park Place Dealerships"</span>,
+  <span class="hl-key">"dealer_phone"</span>: <span class="hl-str">"(972) 241-0900"</span>,
+  <span class="hl-key">"dealer_address"</span>: <span class="hl-str">"6113 Lemmon Ave"</span>,
+  <span class="hl-key">"dealer_website"</span>: <span class="hl-str">"parkplace.com"</span>,
+  <span class="hl-key">"first_seen_at"</span>: <span class="hl-str">"2026-03-18T09:14:07Z"</span>
+}</pre>
+      </div>
+    </div>
+
+    <!-- ADAPTERS -->
+    <div class="docs-section" id="adapters">
+      <h2 class="docs-h2">Adapters</h2>
+      <p class="docs-p">Adapters are the site-specific scraping modules. Each adapter extends <code>BaseAdapter</code> and is registered in <code>app/adapters/registry.py</code>. To add a new site, create a new file and add it to the registry.</p>
+      <table class="param-table">
+        <thead><tr><th>Name</th><th>Site</th><th>Mode</th><th>Crawl Delay</th></tr></thead>
+        <tbody>
+          <tr><td class="param-name">cars_com</td><td>cars.com</td><td class="param-type">HTTPX + BeautifulSoup</td><td class="param-desc">2.0s / page</td></tr>
+          <tr><td class="param-name">cargurus</td><td>cargurus.com</td><td class="param-type">Playwright (Chromium)</td><td class="param-desc">3.0s / page</td></tr>
+        </tbody>
+      </table>
+      <p class="docs-p">Selectors drift as sites update their DOM. Run <code>make test-live</code> weekly to detect breakage. When a test returns 0 results (not an error), update the CSS selectors in the adapter file.</p>
+      <div class="code-block">
+        <span class="code-lang">python</span>
+<pre><span class="hl-cmt"># Add a new adapter in 3 steps:</span>
+
+<span class="hl-cmt"># 1. Create app/adapters/mysite.py</span>
+<span class="hl-kw">class</span> MySiteAdapter(BaseAdapter):
+    name = <span class="hl-str">"my_site"</span>
+    <span class="hl-kw">async def</span> scrape(self, zip_code, radius_miles, max_pages, headless, respect_robots):
+        <span class="hl-cmt"># ... fetch + parse ...</span>
+        <span class="hl-kw">return</span> items
+
+<span class="hl-cmt"># 2. Register in app/adapters/registry.py</span>
+ADAPTER_REGISTRY[<span class="hl-str">"my_site"</span>] = MySiteAdapter()
+
+<span class="hl-cmt"># 3. Use in API requests</span>
+{ <span class="hl-str">"adapters"</span>: [<span class="hl-str">"my_site"</span>] }</pre>
+      </div>
+    </div>
+
+    <footer class="footer">
+      <div class="footer-brand">Auto<span>Scrape</span></div>
+      <ul class="footer-links">
+        <li><a href="index.html">Home</a></li><li><a href="dashboard.html">Dashboard</a></li><li><a href="results.html">Results</a></li>
+      </ul>
+      <div class="footer-copy">For research use only · Respect robots.txt · Review ToS per site</div>
+    </footer>
+  </main>
+</div>
+</div>
+
+<button id="scrolltop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+<script>
+// scroll spy
+const sections=document.querySelectorAll('.docs-section[id]');
+const links=document.querySelectorAll('.docs-nav-link');
+window.addEventListener('scroll',()=>{
+  const top=window.scrollY+80;
+  let current='';
+  sections.forEach(s=>{if(s.offsetTop<=top)current=s.id;});
+  links.forEach(l=>{
+    const href=l.getAttribute('href');
+    l.classList.toggle('active',href==='#'+current);
+  });
+  document.getElementById('scrolltop').classList.toggle('visible',window.scrollY>300);
+});
+
+// copy button
+function copyCode(btn){
+  const code=btn.closest('.code-block').querySelector('pre').textContent;
+  navigator.clipboard.writeText(code).then(()=>{
+    const orig=btn.textContent; btn.textContent='copied!'; btn.style.color='#4ade80';
+    setTimeout(()=>{btn.textContent=orig;btn.style.color='';},1500);
+  });
+}
+</script>
+</body>
+</html>

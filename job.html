@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Jobs — AutoScrape</title>
+<link rel="stylesheet" href="_shared.css"/>
+<style>
+.jobs-layout { display:grid; grid-template-columns:1fr 380px; min-height:calc(100vh - var(--nav-h)); }
+.jobs-main { border-right:1px solid var(--border); }
+.jobs-detail { background:var(--bg2); display:flex; flex-direction:column; }
+
+/* JOB LIST */
+.jobs-list-header {
+  padding:20px 24px; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
+  position:sticky; top:var(--nav-h); z-index:10; background:var(--bg);
+}
+.jobs-filter { display:flex; gap:8px; }
+.job-row {
+  display:grid;
+  grid-template-columns: 80px 90px 1fr 80px 80px 70px;
+  align-items:center;
+  padding:14px 24px;
+  border-bottom:1px solid var(--border);
+  cursor:pointer;
+  transition:background var(--transition);
+  gap:16px;
+}
+.job-row:hover { background:var(--bg2); }
+.job-row.selected { background:var(--accent-glow); border-left:2px solid var(--accent); }
+.job-row-id { font-family:var(--font-mono); font-size:11px; color:var(--dim); }
+.job-row-zips { font-family:var(--font-mono); font-size:11px; color:var(--text2); }
+.job-row-adapters { font-family:var(--font-mono); font-size:11px; color:var(--dim); }
+.job-row-found { font-family:var(--font-mono); font-size:13px; font-weight:500; text-align:right; }
+.job-row-new { font-family:var(--font-mono); font-size:11px; color:#4ade80; text-align:right; }
+.job-row-date { font-family:var(--font-mono); font-size:10px; color:var(--muted); text-align:right; }
+
+/* DETAIL PANEL */
+.detail-header {
+  padding:24px; border-bottom:1px solid var(--border);
+  position:sticky; top:var(--nav-h); background:var(--bg2); z-index:5;
+}
+.detail-title { font-family:var(--font-display); font-size:17px; font-weight:700; margin-bottom:4px; }
+.detail-id { font-family:var(--font-mono); font-size:10px; color:var(--muted); letter-spacing:.04em; }
+.detail-body { padding:24px; flex:1; overflow-y:auto; }
+.detail-section { margin-bottom:24px; }
+.detail-section-title { font-family:var(--font-mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid var(--border); }
+.detail-row { display:flex; justify-content:space-between; align-items:center; padding:7px 0; border-bottom:1px solid var(--border); }
+.detail-key { font-family:var(--font-mono); font-size:11px; color:var(--dim); }
+.detail-val { font-family:var(--font-mono); font-size:11px; color:var(--text2); }
+
+/* PROGRESS */
+.progress-track { height:4px; background:var(--bg3); border:1px solid var(--border); margin:12px 0; }
+.progress-fill { height:100%; background:var(--accent); transition:width 0.5s ease; }
+
+/* MINI LOG */
+.mini-log {
+  background:#050504; border:1px solid var(--border);
+  font-family:var(--font-mono); font-size:11px; line-height:1.8;
+  padding:14px; max-height:200px; overflow-y:auto;
+}
+.ml-line { display:flex; gap:8px; }
+.ml-t { color:var(--muted); flex-shrink:0; }
+.ml-ok { color:#4ade80; }
+.ml-inf { color:#60a5fa; }
+.ml-w { color:#fbbf24; }
+.ml-e { color:#f87171; }
+.ml-m { color:#b0b0a0; }
+
+/* RUNNING ANIMATION */
+.running-bar {
+  height:2px;
+  background:linear-gradient(90deg,transparent,var(--accent),transparent);
+  background-size:200% 100%;
+  animation:runbar 1.5s ease infinite;
+}
+@keyframes runbar{0%{background-position:200% 0}100%{background-position:-200% 0}}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="index.html" class="nav-logo">Auto<span>Scrape</span></a>
+  <ul class="nav-links">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="dashboard.html">Dashboard</a></li>
+    <li><a href="results.html">Results</a></li>
+    <li><a href="dealers.html">Dealers</a></li>
+    <li><a href="docs.html">API Docs</a></li>
+  </ul>
+  <div class="nav-right">
+    <button class="nav-pill cta" onclick="openNewJob()">+ New Job</button>
+  </div>
+</nav>
+
+<div class="page">
+<div class="jobs-layout">
+
+  <!-- JOB LIST -->
+  <div class="jobs-main">
+    <div class="jobs-list-header">
+      <span class="section-title">Scrape Jobs <span style="font-family:var(--font-mono);font-size:11px;color:var(--dim);font-weight:400" id="job-total"></span></span>
+      <div class="jobs-filter">
+        <select class="sel" id="status-filter" style="width:120px" onchange="filterJobs()">
+          <option value="">All Status</option>
+          <option value="done">Done</option>
+          <option value="running">Running</option>
+          <option value="failed">Failed</option>
+          <option value="partial">Partial</option>
+        </select>
+        <button class="btn btn-ghost" onclick="filterJobs()">↻</button>
+      </div>
+    </div>
+
+    <!-- TABLE HEADER -->
+    <div class="job-row" style="background:var(--bg2);cursor:default;border-bottom:2px solid var(--border2)">
+      <span style="font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Status</span>
+      <span style="font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Job ID</span>
+      <span style="font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">ZIPs / Adapters</span>
+      <span style="font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:right">Found</span>
+      <span style="font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:right">New</span>
+      <span style="font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:right">Date</span>
+    </div>
+
+    <div id="job-list"></div>
+  </div>
+
+  <!-- DETAIL PANEL -->
+  <div class="jobs-detail">
+    <div class="detail-header">
+      <div class="detail-title" id="d-title">Select a job</div>
+      <div class="detail-id" id="d-id">—</div>
+    </div>
+    <div class="detail-body" id="detail-body">
+      <div style="padding:40px 0;text-align:center;color:var(--muted);font-family:var(--font-mono);font-size:12px">Click a job to view details</div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<button id="scrolltop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+<script src="_data.js"></script>
+<script>
+let jobs=[...MOCK.jobs], selectedJob=null;
+
+function filterJobs(){
+  const status=document.getElementById('status-filter').value;
+  const filtered=status?jobs.filter(j=>j.status===status):jobs;
+  document.getElementById('job-total').textContent='('+filtered.length+')';
+  renderList(filtered);
+}
+
+function renderList(list){
+  document.getElementById('job-list').innerHTML=list.map(j=>{
+    const tag={done:'tag-green',running:'tag-blue',failed:'tag-red',partial:'tag-amber',pending:''}[j.status]||'';
+    return `<div class="job-row ${selectedJob===j.id?'selected':''}" onclick="selectJob('${j.id}')">
+      <span class="tag ${tag}" style="font-size:9px">${j.status}</span>
+      <span class="job-row-id">${j.uuid}</span>
+      <div>
+        <div class="job-row-zips">${j.zip_codes.join(', ')}</div>
+        <div class="job-row-adapters">${j.adapters.join(' + ')}</div>
+      </div>
+      <span class="job-row-found">${j.total_found.toLocaleString()}</span>
+      <span class="job-row-new">+${j.total_new.toLocaleString()}</span>
+      <span class="job-row-date">${fmtDate(j.created_at)}</span>
+    </div>`;
+  }).join('');
+}
+
+function selectJob(id){
+  selectedJob=id;
+  filterJobs();
+  const job=jobs.find(j=>j.id===id);
+  if(!job)return;
+  document.getElementById('d-title').textContent='Job #'+job.id;
+  document.getElementById('d-id').textContent=job.uuid;
+
+  const dur=job.started_at&&job.finished_at?Math.round((new Date(job.finished_at)-new Date(job.started_at))/1000)+'s':'—';
+  const pct=job.status==='done'?100:job.status==='running'?Math.round(job.total_found/200*100):0;
+  const tag={done:'tag-green',running:'tag-blue',failed:'tag-red',partial:'tag-amber',pending:''}[job.status]||'';
+
+  document.getElementById('detail-body').innerHTML=`
+    <div class="detail-section">
+      <div class="detail-section-title">Overview</div>
+      <div class="detail-row"><span class="detail-key">Status</span><span class="tag ${tag}">${job.status}</span></div>
+      <div class="detail-row"><span class="detail-key">Listings found</span><span class="detail-val">${job.total_found.toLocaleString()}</span></div>
+      <div class="detail-row"><span class="detail-key">New listings</span><span class="detail-val" style="color:#4ade80">+${job.total_new.toLocaleString()}</span></div>
+      <div class="detail-row"><span class="detail-key">Duplicates</span><span class="detail-val">${(job.total_found-job.total_new).toLocaleString()}</span></div>
+      ${job.status==='running'?`<div class="running-bar"></div><div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-top:4px">Scraping in progress…</div>`:''}
+    </div>
+
+    <div class="detail-section">
+      <div class="detail-section-title">Configuration</div>
+      <div class="detail-row"><span class="detail-key">ZIP codes</span><span class="detail-val">${job.zip_codes.join(', ')}</span></div>
+      <div class="detail-row"><span class="detail-key">Radius</span><span class="detail-val">${job.radius_miles} mi</span></div>
+      <div class="detail-row"><span class="detail-key">Adapters</span><span class="detail-val">${job.adapters.join(', ')}</span></div>
+      <div class="detail-row"><span class="detail-key">Celery task ID</span><span class="detail-val" style="font-size:10px;color:var(--muted)">${job.uuid}…</span></div>
+    </div>
+
+    <div class="detail-section">
+      <div class="detail-section-title">Timing</div>
+      <div class="detail-row"><span class="detail-key">Created</span><span class="detail-val">${fmtDate(job.created_at)}</span></div>
+      <div class="detail-row"><span class="detail-key">Started</span><span class="detail-val">${fmtDate(job.started_at)}</span></div>
+      <div class="detail-row"><span class="detail-key">Finished</span><span class="detail-val">${job.finished_at?fmtDate(job.finished_at):'—'}</span></div>
+      <div class="detail-row"><span class="detail-key">Duration</span><span class="detail-val">${dur}</span></div>
+    </div>
+
+    ${job.error_message?`
+    <div class="detail-section">
+      <div class="detail-section-title" style="color:#f87171">Error</div>
+      <div style="font-family:var(--font-mono);font-size:11px;color:#f87171;background:var(--red-dim);border:1px solid rgba(192,57,43,0.3);padding:12px;line-height:1.7">${job.error_message}</div>
+    </div>`:''}
+
+    <div class="detail-section">
+      <div class="detail-section-title">Log Excerpt</div>
+      <div class="mini-log">
+        <div class="ml-line"><span class="ml-t">00:00:00</span><span class="ml-inf">INFO</span><span class="ml-m">task.received job_id=${job.uuid.slice(0,8)}</span></div>
+        <div class="ml-line"><span class="ml-t">00:00:01</span><span class="ml-inf">INFO</span><span class="ml-m">cars_com.fetch zip=${job.zip_codes[0]} page=1</span></div>
+        <div class="ml-line"><span class="ml-t">00:00:04</span><span class="ml-ok">OK  </span><span class="ml-m">cars_com.page_done count=24 new=22</span></div>
+        <div class="ml-line"><span class="ml-t">00:00:07</span><span class="ml-inf">INFO</span><span class="ml-m">cargurus.navigate zip=${job.zip_codes[0]}</span></div>
+        ${job.error_message?`<div class="ml-line"><span class="ml-t">00:00:12</span><span style="color:#f87171">ERR </span><span class="ml-m">${job.error_message.split(':')[0]}</span></div>`:`<div class="ml-line"><span class="ml-t">00:00:14</span><span class="ml-ok">OK  </span><span class="ml-m">cargurus.done total=${Math.floor(job.total_found/2)}</span></div>`}
+        <div class="ml-line"><span class="ml-t">00:00:15</span><span class="ml-ok">OK  </span><span class="ml-m">task.done found=${job.total_found} new=${job.total_new} status=${job.status}</span></div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;padding-top:8px">
+      <a href="results.html" class="btn btn-primary" style="flex:1;justify-content:center">View Listings →</a>
+      <button class="btn btn-danger" onclick="alert('Job re-queued (demo)')">Re-run</button>
+    </div>
+  `;
+}
+
+function openNewJob(){ window.location.href='index.html'; }
+
+filterJobs();
+window.addEventListener('scroll',()=>{document.getElementById('scrolltop').classList.toggle('visible',window.scrollY>300);});
+</script>
+</body>
+</html>
